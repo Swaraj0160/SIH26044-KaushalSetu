@@ -1,6 +1,36 @@
 # UX_REDESIGN_PROPOSAL — KaushalSetu
 
-**Status:** proposal only. No code changed. Awaiting go / no-go.
+**Status: IMPLEMENTED.** This document began as a proposal; the structural
+redesign it describes has now shipped. What follows is the as-built record.
+
+## Implementation status (SUPER MASTER transformation)
+
+| Proposal                                           | Shipped                                                                                                                                                                                                                 |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Journey spine as the mental model                  | `getJourney()` → 7 ordered stages; `<JourneyStepper>` (full + strip) on Home and every My-Journey page, always showing "you are here"                                                                                   |
+| Home = orientation, not a report                   | `/student` rebuilt: greeting · target · readiness · journey spine · **one** Next Best Action (+ "why") · recent activity · 2–3 opportunities. No stat-card wall.                                                        |
+| Deterministic "Next Best Action"                   | `lib/engines/next-action.ts` — scored candidates over goal, gaps, evidence, assessments, projects, applications, journey stage → one action + rationale + CTA                                                           |
+| Four nav destinations                              | `app-shell.tsx` grouped nav: Home / My Journey (Education, Skills & Evidence, Projects, Internship, Certifications, Achievements) / Career / My Profile                                                                 |
+| Profile as the single object, not 6 sibling routes | `/student/profile` = Competency Profile source-of-truth with an "inputs feeding this" panel; graph/evidence/passport are lenses on it                                                                                   |
+| Education entity                                   | `EducationRecord` + `Course` types; generator authors courses→skills; `/student/education` shows courses → the skills they produced                                                                                     |
+| Richer Projects                                    | `Project` gains type, status, contribution, team, tech, competency claims, links, evaluations; `/student/projects` + `[id]` show the skill→evidence→competency chain                                                    |
+| Achievements entity                                | `Achievement` type (hackathon/award/competition/publication/research/leadership/extracurricular); `/student/achievements` timeline; feeds activity + passport                                                           |
+| Career as one destination                          | `/student/career?tab=` — Goal · Readiness · Skill Gaps · Roadmap · Explore Roles (simulator folded in) · Opportunities · Applications. Legacy `/student/{gaps,simulator,opportunities,applications}` now redirect here. |
+| Internship lifecycle visible                       | `/student/internship` shows the full pipeline: Discovered → Applied → Shortlisted → Selected → Onboarding → Active → Milestones → Mentor feedback → Final evaluation → Completed → Verified skills                      |
+| Copilot demoted from peer nav                      | Kept as "Career Copilot" under Career, plus `⌘K` command palette for navigation/actions                                                                                                                                 |
+| Per-role mental models                             | Industry _find & develop talent_ · Faculty _verify & connect_ (Approve / Request changes) · Institution _understand & improve readiness_ · Admin _govern the ecosystem_                                                 |
+| Mobile model                                       | Bottom nav (Home / Journey / Career / Profile) below `md`; responsive verified desktop→mobile                                                                                                                           |
+| Auth                                               | `AuthProvider` abstraction; `DemoAuthProvider` (server-side credentials + one-click personas); premium `/login`; `SupabaseAuthProvider` stub                                                                            |
+| States                                             | `loading.tsx` skeletons · `error.tsx` boundary · `not-found.tsx`                                                                                                                                                        |
+
+Preserved unchanged: every deterministic engine (competency graph, evidence
+confidence, matching, readiness, skill-gap, demand, career simulator), the
+internship workflow, industry analytics, institution heatmap, faculty and admin
+tools, judge mode, the AI abstraction, and the single seeded synthetic dataset.
+
+---
+
+## Original proposal (retained for rationale)
 
 **Thesis in one line:** the product currently presents as _a set of ~10 skill
 tools in a sidebar_; it should present as _one continuous journey that compounds
@@ -12,22 +42,22 @@ not cosmetic.
 
 ## 1. Current UX problems
 
-| # | Problem | Root cause |
-|---|---|---|
-| 1 | **"Toolbox," not a journey.** The student sidebar is 10 flat items, 6 of them named "Skill …" or "Career …". Nothing tells the student where they are or where they're going. | No journey model in the IA. Every feature is a co-equal top-level destination. |
-| 2 | **Modules feel disconnected.** Skill Graph, Evidence, Assessment, Gaps, Simulator, Passport are separate pages that all describe the _same_ underlying profile from slightly different angles. The student has to mentally stitch them together. | The profile is the real object, but it's exposed as 6 sibling routes instead of 1 object with lenses. |
-| 3 | **Dashboard overload on Home.** `/student` opens with a 4-stat-card row + competency graph + readiness meter + internship card + recommended cards + applications table. It answers "here is everything" instead of "here is your one next move." | Home is treated as a report, not as orientation. |
-| 4 | **No sense of progress or history.** There is no timeline, no "you have completed X, you are doing Y, Z is next." A student cannot see their story. | No `TimelineEvent` concept; journey stages aren't modelled. |
-| 5 | **Education is invisible.** The `Student` type has flat `programme`, `semester`, `cgpa` — no courses, grades, credits, academic projects. Yet "Education creates skills" is stage 01 of the intended ecosystem. | Missing `Course` / `Enrolment` / `AcademicTerm` entities. |
-| 6 | **Projects are thin.** `Project` = `{ title, summary, skillIds, date, facultyVerifiedBy }`. No project type (mini / major / industry / personal), no lifecycle, no team/role/repo/demo, no explicit "this project → this competency" chain the student can see. | Under-modelled entity. |
-| 7 | **Achievements don't exist.** Hackathons, awards, publications, leadership have no home. | Missing entity. |
-| 8 | **Career goal is a single hidden field.** `targetRoleId` + `careerInterests[]` exist but there's no "Career Goal" surface where the student sets target role, industries, locations, and _sees everything recompute_. The Simulator is a separate page doing part of this job. | Career goal is data, not a screen; Simulator duplicates it. |
-| 9 | **Applications is an orphan page.** A standalone `/student/applications` with a status bar. Applications only make sense _inside_ the career pursuit; as a top-level item they add nav weight without context. | Wrong altitude. |
-| 10 | **Placement has no student-facing stage.** `PlacementOutcome` exists only for institution analytics. The student's journey visibly stops at "internship." | Journey model incomplete. |
-| 11 | **"Career Copilot" competes with the UI.** A chat page as a peer of every feature signals "if the UI is confusing, ask the bot." The copilot should be an _assist affordance_ available in context, not a destination. | Chat-as-navigation. |
-| 12 | **Same nav for every role.** Faculty (3 items) and Admin (5) are fine; Student (10) and the recruiter/institution split are not tuned to each role's single job. | One nav pattern applied uniformly. |
-| 13 | **Cognitive load per screen is low; nav load is high.** Individual pages are clean, but the _count_ of destinations forces the student to hold a map in their head. | Optimised the wrong axis: more screens instead of more powerful screens. |
-| 14 | **No mobile model.** A 10-item vertical sidebar collapses to nothing on mobile; there is no bottom nav or contextual model. | Desktop-only IA. |
+| #   | Problem                                                                                                                                                                                                                                                                        | Root cause                                                                                            |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| 1   | **"Toolbox," not a journey.** The student sidebar is 10 flat items, 6 of them named "Skill …" or "Career …". Nothing tells the student where they are or where they're going.                                                                                                  | No journey model in the IA. Every feature is a co-equal top-level destination.                        |
+| 2   | **Modules feel disconnected.** Skill Graph, Evidence, Assessment, Gaps, Simulator, Passport are separate pages that all describe the _same_ underlying profile from slightly different angles. The student has to mentally stitch them together.                               | The profile is the real object, but it's exposed as 6 sibling routes instead of 1 object with lenses. |
+| 3   | **Dashboard overload on Home.** `/student` opens with a 4-stat-card row + competency graph + readiness meter + internship card + recommended cards + applications table. It answers "here is everything" instead of "here is your one next move."                              | Home is treated as a report, not as orientation.                                                      |
+| 4   | **No sense of progress or history.** There is no timeline, no "you have completed X, you are doing Y, Z is next." A student cannot see their story.                                                                                                                            | No `TimelineEvent` concept; journey stages aren't modelled.                                           |
+| 5   | **Education is invisible.** The `Student` type has flat `programme`, `semester`, `cgpa` — no courses, grades, credits, academic projects. Yet "Education creates skills" is stage 01 of the intended ecosystem.                                                                | Missing `Course` / `Enrolment` / `AcademicTerm` entities.                                             |
+| 6   | **Projects are thin.** `Project` = `{ title, summary, skillIds, date, facultyVerifiedBy }`. No project type (mini / major / industry / personal), no lifecycle, no team/role/repo/demo, no explicit "this project → this competency" chain the student can see.                | Under-modelled entity.                                                                                |
+| 7   | **Achievements don't exist.** Hackathons, awards, publications, leadership have no home.                                                                                                                                                                                       | Missing entity.                                                                                       |
+| 8   | **Career goal is a single hidden field.** `targetRoleId` + `careerInterests[]` exist but there's no "Career Goal" surface where the student sets target role, industries, locations, and _sees everything recompute_. The Simulator is a separate page doing part of this job. | Career goal is data, not a screen; Simulator duplicates it.                                           |
+| 9   | **Applications is an orphan page.** A standalone `/student/applications` with a status bar. Applications only make sense _inside_ the career pursuit; as a top-level item they add nav weight without context.                                                                 | Wrong altitude.                                                                                       |
+| 10  | **Placement has no student-facing stage.** `PlacementOutcome` exists only for institution analytics. The student's journey visibly stops at "internship."                                                                                                                      | Journey model incomplete.                                                                             |
+| 11  | **"Career Copilot" competes with the UI.** A chat page as a peer of every feature signals "if the UI is confusing, ask the bot." The copilot should be an _assist affordance_ available in context, not a destination.                                                         | Chat-as-navigation.                                                                                   |
+| 12  | **Same nav for every role.** Faculty (3 items) and Admin (5) are fine; Student (10) and the recruiter/institution split are not tuned to each role's single job.                                                                                                               | One nav pattern applied uniformly.                                                                    |
+| 13  | **Cognitive load per screen is low; nav load is high.** Individual pages are clean, but the _count_ of destinations forces the student to hold a map in their head.                                                                                                            | Optimised the wrong axis: more screens instead of more powerful screens.                              |
+| 14  | **No mobile model.** A 10-item vertical sidebar collapses to nothing on mobile; there is no bottom nav or contextual model.                                                                                                                                                    | Desktop-only IA.                                                                                      |
 
 ## 2. Current route audit
 
@@ -37,57 +67,57 @@ it's relevant, not top-level) · **REMOVE** (delete) · **NEW** (doesn't exist y
 
 ### Public / shared
 
-| Route | Purpose | User | Primary action | Data shown | Problems | Verdict |
-|---|---|---|---|---|---|---|
-| `/` | Landing / positioning | prospect, judge | "Explore judge demo" | stats, problem table, lifecycle | none major | **KEEP** |
-| `/demo` | Persona picker | judge | pick persona → cookie | 6 persona cards | fine; add a "start guided tour" option | **KEEP** |
-| `/judge` | Technical showcase | judge | read | engines, architecture, metrics | dense but appropriate for its audience | **KEEP** |
-| `/verify` , `/verify/[id]` | Public credential check | anyone | verify id | credential + competencies | none | **KEEP** |
-| `/health`, `/api/*` | Diagnostics / APIs | ops | — | — | — | **KEEP** |
-| `/demand` | Industry skill-demand intelligence | recruiter, institution, faculty | read trends | trending/emerging/declining skills, role & location demand | shared route is fine; label it per role in nav | **KEEP** (shared) |
+| Route                      | Purpose                            | User                            | Primary action        | Data shown                                                 | Problems                                       | Verdict           |
+| -------------------------- | ---------------------------------- | ------------------------------- | --------------------- | ---------------------------------------------------------- | ---------------------------------------------- | ----------------- |
+| `/`                        | Landing / positioning              | prospect, judge                 | "Explore judge demo"  | stats, problem table, lifecycle                            | none major                                     | **KEEP**          |
+| `/demo`                    | Persona picker                     | judge                           | pick persona → cookie | 6 persona cards                                            | fine; add a "start guided tour" option         | **KEEP**          |
+| `/judge`                   | Technical showcase                 | judge                           | read                  | engines, architecture, metrics                             | dense but appropriate for its audience         | **KEEP**          |
+| `/verify` , `/verify/[id]` | Public credential check            | anyone                          | verify id             | credential + competencies                                  | none                                           | **KEEP**          |
+| `/health`, `/api/*`        | Diagnostics / APIs                 | ops                             | —                     | —                                                          | —                                              | **KEEP**          |
+| `/demand`                  | Industry skill-demand intelligence | recruiter, institution, faculty | read trends           | trending/emerging/declining skills, role & location demand | shared route is fine; label it per role in nav | **KEEP** (shared) |
 
 ### Student (current: 11 routes incl. detail)
 
-| Route | Purpose | Primary action | Secondary | Data shown | Problems | Verdict |
-|---|---|---|---|---|---|---|
-| `/student` | Overview dashboard | scan status | jump anywhere | readiness, match-to-target, evidence %, biggest gap, competency graph, readiness meter, active internship, 3 recommended opps, applications table | too much; no single next step; it's a report | **REBUILD** as "You are here" (see §24) |
-| `/student/passport` | Competency Passport | view / share (QR) | open `/verify` | identity, readiness, competencies + skills, verified skills, endorsements, projects, certs | good content, but it's a _second_ profile view alongside `/student/skills`; and it's a "page" not a "culmination" | **KEEP** as the shareable culmination; source all data from the one Profile |
-| `/student/skills` | Skill graph + evidence ledger | inspect skills | hover evidence rationale | competency map (SVG), per-skill level + evidence + evidence items | this is _the profile_ but named "Skill Graph"; overlaps Passport | **MERGE** → becomes the **Competency Profile** screen (with Passport as its "share" mode) |
-| `/student/assessment` | Adaptive skill assessment | take assessment | pick skill | question, adaptive difficulty, result (score/level/weak areas) | genuinely good; but discoverability is poor — it's buried as a peer nav item | **DEMOTE**: launchable from a skill row, from a gap, and from Next Best Action; keep a lightweight index at Profile › Assessments |
-| `/student/gaps` | Skill gaps + roadmap | read plan | link to assessment | gap list (priority, actions, resources), sequenced roadmap | strong content; but "gaps" only mean something _relative to a career goal_ | **MERGE** → a tab of **Career** (Career › Gaps & Plan) |
-| `/student/simulator` | Compare role fits | toggle roles | see gaps per role | match %, readiness, competencies, gaps per role, side by side | duplicates half of the career-goal job; "simulator" is jargon | **MERGE** → **Career › Explore roles** (the "which role am I closest to" mode of the Career screen) |
-| `/student/opportunities` | Ranked opportunity feed | open an opportunity | filter | strong/promising vs stretch lists, OpportunityCard (match, missing, applied) | good; belongs under Career, not as its own silo | **MERGE** → **Career › Opportunities** |
-| `/student/opportunities/[id]` | Explainable match + apply | apply | read gap for this posting | full MatchBreakdown, competency checklist, role details, gap | excellent — the flagship "not a black box" screen | **KEEP** (route can live under `/career/opportunities/[id]`) |
-| `/student/applications` | Application tracker | scan statuses | — | seeded + local applications, status bar | orphan; low context | **MERGE** → **Career › Applications** (a tab), and surface the _next_ pending action on Home |
-| `/student/internship` | Internship workspace | track milestones/logs | — | objectives, milestones, weekly logs, skill delta, final eval | good, but it's "Experience," and it's empty for most students | **MERGE** → **Journey › Experience** (internships + industry projects); show only when the student has one |
-| `/student/copilot` | Career chat | ask questions | suggested prompts | grounded facts + narrative | chat-as-destination competes with the IA | **DEMOTE**: a persistent "Ask" affordance (⌘K / a corner button) available on every screen, pre-loaded with the current context; no standalone nav item |
+| Route                         | Purpose                       | Primary action        | Secondary                 | Data shown                                                                                                                                        | Problems                                                                                                          | Verdict                                                                                                                                                 |
+| ----------------------------- | ----------------------------- | --------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/student`                    | Overview dashboard            | scan status           | jump anywhere             | readiness, match-to-target, evidence %, biggest gap, competency graph, readiness meter, active internship, 3 recommended opps, applications table | too much; no single next step; it's a report                                                                      | **REBUILD** as "You are here" (see §24)                                                                                                                 |
+| `/student/passport`           | Competency Passport           | view / share (QR)     | open `/verify`            | identity, readiness, competencies + skills, verified skills, endorsements, projects, certs                                                        | good content, but it's a _second_ profile view alongside `/student/skills`; and it's a "page" not a "culmination" | **KEEP** as the shareable culmination; source all data from the one Profile                                                                             |
+| `/student/skills`             | Skill graph + evidence ledger | inspect skills        | hover evidence rationale  | competency map (SVG), per-skill level + evidence + evidence items                                                                                 | this is _the profile_ but named "Skill Graph"; overlaps Passport                                                  | **MERGE** → becomes the **Competency Profile** screen (with Passport as its "share" mode)                                                               |
+| `/student/assessment`         | Adaptive skill assessment     | take assessment       | pick skill                | question, adaptive difficulty, result (score/level/weak areas)                                                                                    | genuinely good; but discoverability is poor — it's buried as a peer nav item                                      | **DEMOTE**: launchable from a skill row, from a gap, and from Next Best Action; keep a lightweight index at Profile › Assessments                       |
+| `/student/gaps`               | Skill gaps + roadmap          | read plan             | link to assessment        | gap list (priority, actions, resources), sequenced roadmap                                                                                        | strong content; but "gaps" only mean something _relative to a career goal_                                        | **MERGE** → a tab of **Career** (Career › Gaps & Plan)                                                                                                  |
+| `/student/simulator`          | Compare role fits             | toggle roles          | see gaps per role         | match %, readiness, competencies, gaps per role, side by side                                                                                     | duplicates half of the career-goal job; "simulator" is jargon                                                     | **MERGE** → **Career › Explore roles** (the "which role am I closest to" mode of the Career screen)                                                     |
+| `/student/opportunities`      | Ranked opportunity feed       | open an opportunity   | filter                    | strong/promising vs stretch lists, OpportunityCard (match, missing, applied)                                                                      | good; belongs under Career, not as its own silo                                                                   | **MERGE** → **Career › Opportunities**                                                                                                                  |
+| `/student/opportunities/[id]` | Explainable match + apply     | apply                 | read gap for this posting | full MatchBreakdown, competency checklist, role details, gap                                                                                      | excellent — the flagship "not a black box" screen                                                                 | **KEEP** (route can live under `/career/opportunities/[id]`)                                                                                            |
+| `/student/applications`       | Application tracker           | scan statuses         | —                         | seeded + local applications, status bar                                                                                                           | orphan; low context                                                                                               | **MERGE** → **Career › Applications** (a tab), and surface the _next_ pending action on Home                                                            |
+| `/student/internship`         | Internship workspace          | track milestones/logs | —                         | objectives, milestones, weekly logs, skill delta, final eval                                                                                      | good, but it's "Experience," and it's empty for most students                                                     | **MERGE** → **Journey › Experience** (internships + industry projects); show only when the student has one                                              |
+| `/student/copilot`            | Career chat                   | ask questions         | suggested prompts         | grounded facts + narrative                                                                                                                        | chat-as-destination competes with the IA                                                                          | **DEMOTE**: a persistent "Ask" affordance (⌘K / a corner button) available on every screen, pre-loaded with the current context; no standalone nav item |
 
 ### Recruiter (current: 4)
 
-| Route | Purpose | Verdict |
-|---|---|---|
-| `/recruiter` | Overview | **REBUILD** as "Your hiring pipeline" (one job: fill roles) |
-| `/recruiter/opportunities`, `/…/[id]` | Postings + candidate ranking | **KEEP** — this is the recruiter's core surface |
-| `/recruiter/talent` | Pool-wide search by role fit | **MERGE** into the posting's candidate view + a global "Search talent" (one screen, filters) |
-| `/demand` | Demand intelligence | **KEEP** (contextual: link from a posting's requirements) |
+| Route                                 | Purpose                      | Verdict                                                                                      |
+| ------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------- |
+| `/recruiter`                          | Overview                     | **REBUILD** as "Your hiring pipeline" (one job: fill roles)                                  |
+| `/recruiter/opportunities`, `/…/[id]` | Postings + candidate ranking | **KEEP** — this is the recruiter's core surface                                              |
+| `/recruiter/talent`                   | Pool-wide search by role fit | **MERGE** into the posting's candidate view + a global "Search talent" (one screen, filters) |
+| `/demand`                             | Demand intelligence          | **KEEP** (contextual: link from a posting's requirements)                                    |
 
 ### Faculty (current: 3) — already lean
 
-| Route | Verdict |
-|---|---|
-| `/faculty` | **REBUILD** lightly around "Develop & connect my students" |
-| `/faculty/verification` | **KEEP** — the highest-value faculty action (turns evidence into verified) |
-| `/faculty/collaborations` | **KEEP** — pipeline |
+| Route                     | Verdict                                                                    |
+| ------------------------- | -------------------------------------------------------------------------- |
+| `/faculty`                | **REBUILD** lightly around "Develop & connect my students"                 |
+| `/faculty/verification`   | **KEEP** — the highest-value faculty action (turns evidence into verified) |
+| `/faculty/collaborations` | **KEEP** — pipeline                                                        |
 
 ### Institution (current: 5) — mostly good
 
-| Route | Verdict |
-|---|---|
-| `/institution` | **KEEP** as Command Center (one job: understand & improve readiness) |
-| `/institution/heatmap` | **KEEP** — flagship |
-| `/institution/students` | **KEEP** — merge in a "cohort readiness" view |
-| `/institution/placements` | **KEEP** |
-| `/demand` | **KEEP** (contextual link from heatmap gaps) |
+| Route                     | Verdict                                                              |
+| ------------------------- | -------------------------------------------------------------------- |
+| `/institution`            | **KEEP** as Command Center (one job: understand & improve readiness) |
+| `/institution/heatmap`    | **KEEP** — flagship                                                  |
+| `/institution/students`   | **KEEP** — merge in a "cohort readiness" view                        |
+| `/institution/placements` | **KEEP**                                                             |
+| `/demand`                 | **KEEP** (contextual link from heatmap gaps)                         |
 
 ### Admin (current: 5) — fine; governance, keep as-is.
 
@@ -205,15 +235,15 @@ active group. On mobile this is a 4-item bottom bar (§26).
 
 The single primary path, with what each stage _reads_ and _does_:
 
-| Stage | The student sees | The student does | Feeds |
-|---|---|---|---|
-| **01 Education** | terms, courses, grades/credits, and the **skills each course produced** | add/confirm courses; link a course to skills | Skills |
-| **02 Skills** | declared skills, assessed levels, which are strong / unproven | take an assessment; request verification | Evidence, Readiness |
-| **03 Evidence** | per skill: self-declared → assessment → project → certificate → faculty → industry; a confidence band | attach a project / certificate as evidence; ask faculty to verify | Competency Profile |
-| **04 Experience** | internships & industry projects with lifecycle; the **skill delta** each produced | log weekly updates; accept the verified skill delta on completion | Verified competencies |
-| **05 Career Readiness** | target role, readiness %, the ranked gaps, the sequenced plan, closest alternative roles | set/adjust the Career Goal; accept a plan step as a to-do | Next Best Action, Opportunities |
-| **06 Applications** | opportunities ranked by explainable match; each application's stage + timeline | apply; prep for the next application step | Placement |
-| **07 Placement** | the offer(s), role, how readiness moved from start → offer, which gaps were closed on the way | accept; the outcome writes back to the Profile | Institution & industry analytics |
+| Stage                   | The student sees                                                                                      | The student does                                                  | Feeds                            |
+| ----------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | -------------------------------- |
+| **01 Education**        | terms, courses, grades/credits, and the **skills each course produced**                               | add/confirm courses; link a course to skills                      | Skills                           |
+| **02 Skills**           | declared skills, assessed levels, which are strong / unproven                                         | take an assessment; request verification                          | Evidence, Readiness              |
+| **03 Evidence**         | per skill: self-declared → assessment → project → certificate → faculty → industry; a confidence band | attach a project / certificate as evidence; ask faculty to verify | Competency Profile               |
+| **04 Experience**       | internships & industry projects with lifecycle; the **skill delta** each produced                     | log weekly updates; accept the verified skill delta on completion | Verified competencies            |
+| **05 Career Readiness** | target role, readiness %, the ranked gaps, the sequenced plan, closest alternative roles              | set/adjust the Career Goal; accept a plan step as a to-do         | Next Best Action, Opportunities  |
+| **06 Applications**     | opportunities ranked by explainable match; each application's stage + timeline                        | apply; prep for the next application step                         | Placement                        |
+| **07 Placement**        | the offer(s), role, how readiness moved from start → offer, which gaps were closed on the way         | accept; the outcome writes back to the Profile                    | Institution & industry analytics |
 
 Every stage screen ends with a **"what unlocks the next stage"** line and a
 button to the relevant action.
@@ -481,14 +511,14 @@ that scores candidate actions by _leverage_ (how much they move readiness /
 unblock the target / raise evidence confidence) × _effort_ (inverse). Candidates
 are generated from the Profile + Career Goal + open applications, e.g.:
 
-| Trigger | Action | Why it ranks |
-|---|---|---|
-| Mandatory competency gap ≥ 2 levels, no plan step accepted | "Start the MLOps plan — it's blocking ML Engineer" | highest leverage: unblocks the goal |
-| Role skill self-rated but never assessed | "Take the SQL assessment — turn a claim into evidence" | cheap, raises evidence band |
-| Skill with a project but no verification | "Ask Prof. Rao to verify your Recommendation System" | one click for the student, big confidence jump |
-| Application in `interview`, no `nextStep` set | "Prep for your CropWise interview (in 3 days)" | time-sensitive |
-| Internship complete, skill delta not accepted | "Accept your verified Docker + FastAPI skills" | free readiness gain |
-| Career Goal never set | "Set your target role so we can guide you" | prerequisite for everything |
+| Trigger                                                    | Action                                                 | Why it ranks                                   |
+| ---------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------- |
+| Mandatory competency gap ≥ 2 levels, no plan step accepted | "Start the MLOps plan — it's blocking ML Engineer"     | highest leverage: unblocks the goal            |
+| Role skill self-rated but never assessed                   | "Take the SQL assessment — turn a claim into evidence" | cheap, raises evidence band                    |
+| Skill with a project but no verification                   | "Ask Prof. Rao to verify your Recommendation System"   | one click for the student, big confidence jump |
+| Application in `interview`, no `nextStep` set              | "Prep for your CropWise interview (in 3 days)"         | time-sensitive                                 |
+| Internship complete, skill delta not accepted              | "Accept your verified Docker + FastAPI skills"         | free readiness gain                            |
+| Career Goal never set                                      | "Set your target role so we can guide you"             | prerequisite for everything                    |
 
 **Surfaced:** one card on Home ("Your next best action"), plus a small echo at
 the top of the relevant Journey/Career screen. Never more than one at a time on
@@ -570,14 +600,14 @@ already restrained and "government-enterprise." Change the _composition_:
 
 ## 28. Features to merge
 
-| Merge these | Into | Result |
-|---|---|---|
-| Skill Graph & Evidence + Passport (data) | **one Competency Profile** object; Passport = its shareable mode | one source of truth, two presentations |
-| Skill Gaps + Career Simulator + Opportunities + Applications | **Career** (5 tabs), all driven by one Career Goal | 4 routes → 1 destination |
-| Assessment index | reachable from a skill row, a gap, and Next Best Action; small index under Profile › Skills | discoverable in context, not a silo |
-| Recruiter › Talent Search | into the posting candidate view + one global "Search talent" | 1 search surface |
-| Institution › Students | into **Cohorts** (list + readiness distribution) | 1 screen |
-| Career Copilot | a persistent **Ask** affordance (⌘K / corner), context-loaded | not a destination |
+| Merge these                                                  | Into                                                                                        | Result                                 |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------- | -------------------------------------- |
+| Skill Graph & Evidence + Passport (data)                     | **one Competency Profile** object; Passport = its shareable mode                            | one source of truth, two presentations |
+| Skill Gaps + Career Simulator + Opportunities + Applications | **Career** (5 tabs), all driven by one Career Goal                                          | 4 routes → 1 destination               |
+| Assessment index                                             | reachable from a skill row, a gap, and Next Best Action; small index under Profile › Skills | discoverable in context, not a silo    |
+| Recruiter › Talent Search                                    | into the posting candidate view + one global "Search talent"                                | 1 search surface                       |
+| Institution › Students                                       | into **Cohorts** (list + readiness distribution)                                            | 1 screen                               |
+| Career Copilot                                               | a persistent **Ask** affordance (⌘K / corner), context-loaded                               | not a destination                      |
 
 ## 29. Features to remove
 
@@ -591,17 +621,17 @@ already restrained and "government-enterprise." Change the _composition_:
 
 ## 30. Features to introduce
 
-| New | Type | Why it matters |
-|---|---|---|
-| **Education** (terms, courses, grades, course→skill map) | entity + screen | Stage 01 of the ecosystem; makes "education creates skills" visible; grounds the whole journey in something every student already has |
-| **Achievements** | entity + screen | Hackathons/awards/publications have no home today; they carry real (often behavioural) competency signal |
-| **Timeline** | view | Turns modules into a story; the reason to return each semester |
-| **Next Best Action engine** | `lib/engines/next-action.ts` | Removes "what do I do now?" anxiety; one deterministic, explainable recommendation |
-| **Career Goal screen** | screen (data mostly exists) | Everything flows from the goal; today it's an invisible field |
-| **Richer Projects** (type, lifecycle, team, links, evaluations, competency claims) | entity extension | Projects are the main _evidence factory_; they're currently under-modelled |
-| **Journey progress stepper** | component | The recurring "you are here" motif |
-| **Command palette + contextual Ask** | component | Fast navigation without a big rail; the copilot without a chat silo |
-| **Accept skill delta** moment | interaction | Makes the internship→verified-competency loop tangible |
+| New                                                                                | Type                         | Why it matters                                                                                                                        |
+| ---------------------------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **Education** (terms, courses, grades, course→skill map)                           | entity + screen              | Stage 01 of the ecosystem; makes "education creates skills" visible; grounds the whole journey in something every student already has |
+| **Achievements**                                                                   | entity + screen              | Hackathons/awards/publications have no home today; they carry real (often behavioural) competency signal                              |
+| **Timeline**                                                                       | view                         | Turns modules into a story; the reason to return each semester                                                                        |
+| **Next Best Action engine**                                                        | `lib/engines/next-action.ts` | Removes "what do I do now?" anxiety; one deterministic, explainable recommendation                                                    |
+| **Career Goal screen**                                                             | screen (data mostly exists)  | Everything flows from the goal; today it's an invisible field                                                                         |
+| **Richer Projects** (type, lifecycle, team, links, evaluations, competency claims) | entity extension             | Projects are the main _evidence factory_; they're currently under-modelled                                                            |
+| **Journey progress stepper**                                                       | component                    | The recurring "you are here" motif                                                                                                    |
+| **Command palette + contextual Ask**                                               | component                    | Fast navigation without a big rail; the copilot without a chat silo                                                                   |
+| **Accept skill delta** moment                                                      | interaction                  | Makes the internship→verified-competency loop tangible                                                                                |
 
 ## 31. Proposed sitemap
 
@@ -666,6 +696,7 @@ other role) is the recommendation.
 ## 32. User flows
 
 **A. First-time student (the make-or-break flow)**
+
 ```
 Home (empty-ish) → NBA: "Set your target role" → /career/goal
   → pick ML Engineer → readiness computes (low, honest)
@@ -675,12 +706,14 @@ Home (empty-ish) → NBA: "Set your target role" → /career/goal
 ```
 
 **B. Returning student (weekly)**
+
 ```
 Home → glance: journey stage, readiness delta since last visit, recent activity
   → NBA (one thing) → do it → readiness moves → done for the week
 ```
 
 **C. Evidence → competency (the loop)**
+
 ```
 /journey/projects/:id → "claim: ML Engineering" → attach repo + request faculty eval
   → faculty verifies (faculty app) → evidence band jumps to "verified"
@@ -688,6 +721,7 @@ Home → glance: journey stage, readiness delta since last visit, recent activit
 ```
 
 **D. Internship → verified competency**
+
 ```
 /journey/experience/:id (Active) → weekly logs → status → Mentor evaluation
   → "Accept skill delta: Docker L2→L4, API L3→L4" → industry-verified evidence written
@@ -695,6 +729,7 @@ Home → glance: journey stage, readiness delta since last visit, recent activit
 ```
 
 **E. Career pursuit → placement**
+
 ```
 /career/opportunities → open a 70% match → explainable breakdown + gap
   → apply → /career/applications tracks stage + nextStep
@@ -703,6 +738,7 @@ Home → glance: journey stage, readiness delta since last visit, recent activit
 ```
 
 **F. Recruiter**
+
 ```
 /industry/pipeline → role with 20 applicants, 4 awaiting decision
   → /industry/roles/:id → ranked candidates, expand top 3 → "explain A vs B"
@@ -710,6 +746,7 @@ Home → glance: journey stage, readiness delta since last visit, recent activit
 ```
 
 **G. Institution**
+
 ```
 /institution → "Top gap: MLOps, 61% of CSE below L4" → click
   → /institution/heatmap cell → students list + "recommended action: add elective"

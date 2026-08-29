@@ -14,10 +14,50 @@ flowchart TD
   RSC --> AI[lib/ai · AiProvider]
   AI --> MOCK[MockAIProvider · default]
   AI --> GEM[GeminiAIProvider · config swap]
-  RSC --> SESS[demo persona cookie]
-  SESS -.production.-> SB[Supabase Auth + RLS]
+  RSC --> AUTH[lib/auth · AuthProvider]
+  AUTH --> DEMOAUTH[DemoAuthProvider · fixed server-side credentials + one-click personas]
+  AUTH -.production.-> SB[SupabaseAuthProvider + RLS]
   ENG -->|never touches| AI
 ```
+
+## Information architecture (student)
+
+```mermaid
+flowchart LR
+  HOME[Home · orientation] --> J
+  subgraph J[My Journey — the spine]
+    ED[Education] --> SK[Skills & Evidence] --> PR[Projects] --> IN[Internship lifecycle] --> CE[Certifications] --> AC[Achievements]
+  end
+  J --> PROF[Competency Profile · source of truth]
+  PROF --> CAR[Career · one tabbed page<br/>Goal · Readiness · Gaps · Roadmap · Explore · Opportunities · Applications]
+  PROF --> PASS[Passport · QR-verifiable culmination]
+  HOME --> NBA[Next Best Action engine]
+  NBA -.reads.-> PROF & CAR
+```
+
+Every input (course grade, project evaluation, certification, achievement,
+internship skill delta, faculty/industry verification) flows into the Competency
+Profile; the Profile feeds Career readiness, matching and the Passport. Nav is
+four destinations: Home / My Journey / Career / My Profile. A `⌘K` command
+palette addresses every page and quick action.
+
+## Next Best Action engine
+
+```mermaid
+flowchart LR
+  CTX[goal · skill gaps · evidence · assessments<br/>projects · applications · journey stage] --> RANK[computeNextActions<br/>deterministic scored candidates]
+  RANK --> C1[set goal · 1.00]
+  RANK --> C2[accept internship skill delta · 0.92]
+  RANK --> C3[close top mandatory gap · 0.88]
+  RANK --> C4[take a role-skill assessment · 0.72]
+  RANK --> C5[request project verification · 0.66]
+  RANK --> C6[advance an application · 0.60]
+  RANK --> C7[explore adjacent roles · 0.40]
+  C1 & C2 & C3 & C4 & C5 & C6 & C7 --> TOP[highest-scoring action + its 'why' + CTA]
+```
+
+Pure function over engine output — no model call. AI may later phrase the "why",
+never choose the action.
 
 ## Data model (production schema — `lib/db/schema.ts`, authored)
 
@@ -99,17 +139,21 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  REQ[request] --> MW[middleware / layout]
-  MW --> P{persona / session}
-  P -->|none| DEMO[/demo]
+  REQ[request] --> AP[AuthProvider.resolveSession · ks_session httpOnly cookie]
+  AP --> P{persona / session}
+  P -->|none| LOGIN[/login]
   P -->|wrong role| HOME[own workspace home]
   P -->|ok| GUARD[requireRole in the page]
   GUARD --> RENDER[server component renders]
   RENDER -.production.-> RLS[Postgres RLS filters by institution_id]
 ```
 
-Demo build: signed persona cookie + `requireRole()` on every workspace route.
-Production: Supabase Auth (`@supabase/ssr`) + application guards + RLS.
+Demo build: `AuthProvider` interface with `DemoAuthProvider` — credentials live
+**server-side only** (never shipped in client JS); judges also get a
+passwordless one-click persona path. `requireRole(...roles)` guards every
+workspace route: no session → `/login`, wrong role → your own home. Swapping to
+`SupabaseAuthProvider` (`@supabase/ssr`) + RLS is a one-line change in
+`lib/auth/session.ts`.
 
 ## Multi-tenancy
 
@@ -136,11 +180,13 @@ flowchart LR
 
 ## Key decisions
 
-| Decision                                     | Why                                                         |
-| -------------------------------------------- | ----------------------------------------------------------- |
-| Data source behind `lib/data`                | Demo runs zero-setup; production schema drops in unchanged  |
-| Deterministic engines, config-driven weights | Auditable, testable, reproducible; not a model              |
-| AI abstraction, mock default                 | Works with no key; Gemini is configuration                  |
-| Drizzle over Prisma                          | Serverless cold-start; tiny runtime; plain SQL migrations   |
-| Persona cookie for the demo                  | Judges need one-click access; production auth is scaffolded |
-| Synthetic dataset, labelled everywhere       | Honest; no fabricated government data                       |
+| Decision                                     | Why                                                                     |
+| -------------------------------------------- | ----------------------------------------------------------------------- |
+| Data source behind `lib/data`                | Demo runs zero-setup; production schema drops in unchanged              |
+| Deterministic engines, config-driven weights | Auditable, testable, reproducible; not a model                          |
+| AI abstraction, mock default                 | Works with no key; Gemini is configuration                              |
+| Drizzle over Prisma                          | Serverless cold-start; tiny runtime; plain SQL migrations               |
+| `AuthProvider` interface, demo default       | One-click judge access now; Supabase is a one-line swap                 |
+| One journey spine, four nav destinations     | Product is "my academic → skill → career journey", not a dashboard grid |
+| Deterministic Next Best Action               | One honest highest-leverage move; auditable, never a model guess        |
+| Synthetic dataset, labelled everywhere       | Honest; no fabricated government data                                   |
