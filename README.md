@@ -43,8 +43,7 @@ verify, student flow, recruiter ranking, heatmap drilldown).
 Next.js 16 (App Router, RSC) · React 19 · TypeScript strict · Tailwind v4 ·
 Drizzle ORM + PostgreSQL (Supabase, schema authored) · Zod · Vitest · Playwright ·
 Vercel. AI: `AiProvider` abstraction — `MockAIProvider` (default, deterministic)
-
-- `GeminiAIProvider` (config swap). Rationale: [`STACK_DECISION.md`](./STACK_DECISION.md).
+plus `GeminiAIProvider` (config swap). Rationale: [`STACK_DECISION.md`](./STACK_DECISION.md).
 
 ## Run locally
 
