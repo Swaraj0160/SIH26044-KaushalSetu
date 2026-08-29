@@ -328,6 +328,32 @@ export function rankCandidatesForOpportunity(
     .sort((a, b) => b.match.score - a.match.score);
 }
 
+export function rankStudentsForRole(roleId: Id, limit = 20): RankedCandidate[] {
+  const d = ds();
+  const role = d.roleById.get(roleId);
+  if (!role) return [];
+  return d.students
+    .map((student) => {
+      const profile = resolveProfile(student, d.skillById, d.competencies);
+      const xp = experienceMonths(student.id);
+      const match = computeMatch(student, profile, {
+        role,
+        skillsById: d.skillById,
+        experienceMonths: xp,
+      });
+      return {
+        student,
+        institutionName:
+          d.institutionById.get(student.institutionId)?.name ?? "—",
+        match,
+        application: undefined,
+        experienceMonths: xp,
+      };
+    })
+    .sort((a, b) => b.match.score - a.match.score)
+    .slice(0, limit);
+}
+
 export function recruiterOpportunities(employerId: Id) {
   const d = ds();
   return d.opportunities
@@ -545,6 +571,170 @@ export function getInstitutionOverview(institutionId: Id): InstitutionOverview {
   };
 }
 
+export interface HeatCellDetail {
+  department: string;
+  skill: string;
+  students: Array<{
+    id: Id;
+    name: string;
+    level: number;
+    hasEvidence: boolean;
+    targetRole: string;
+  }>;
+  meanLevel: number;
+  recommendedAction: string;
+}
+
+export function getHeatmapCellDetail(
+  institutionId: Id,
+  departmentId: Id,
+  skillId: Id,
+): HeatCellDetail {
+  const d = ds();
+  const dept = d.departmentById.get(departmentId)!;
+  const skill = d.skillById.get(skillId)!;
+  const students = d.students.filter(
+    (s) => s.institutionId === institutionId && s.departmentId === departmentId,
+  );
+  const rows = students
+    .map((s) => {
+      const profile = resolveProfile(s, d.skillById, d.competencies);
+      const rs = profile.skills.get(skillId);
+      return {
+        id: s.id,
+        name: s.name,
+        level: rs?.effectiveLevel ?? 0,
+        hasEvidence: (rs?.evidence.score ?? 0) >= 0.3,
+        targetRole: d.roleById.get(s.targetRoleId)?.title ?? "—",
+      };
+    })
+    .sort((a, b) => a.level - b.level);
+  const withSkill = rows.filter((r) => r.level > 0);
+  const meanLevel = withSkill.length
+    ? withSkill.reduce((a, b) => a + b.level, 0) / withSkill.length
+    : 0;
+  const coverage = students.length ? withSkill.length / students.length : 0;
+
+  let action: string;
+  if (coverage < 0.4)
+    action = `Only ${Math.round(coverage * 100)}% of ${dept.name} students have any ${skill.name}. Add a foundational module or an elective in the next semester.`;
+  else if (meanLevel < 3)
+    action = `${skill.name} is present but shallow (mean L${meanLevel.toFixed(1)}). Run an industry-led workshop + a graded mini-project to push toward L4.`;
+  else
+    action = `${skill.name} coverage is adequate. Prioritise evidence: only ${rows.filter((r) => r.hasEvidence).length}/${students.length} have verifiable evidence — organise assessments and faculty sign-off.`;
+
+  return {
+    department: dept.name,
+    skill: skill.name,
+    students: rows,
+    meanLevel: Math.round(meanLevel * 10) / 10,
+    recommendedAction: action,
+  };
+}
+
+export function getInstitutionStudents(institutionId: Id) {
+  const d = ds();
+  return d.students
+    .filter((s) => s.institutionId === institutionId)
+    .map((s) => {
+      const dash = getStudentDashboard(s.id);
+      return {
+        id: s.id,
+        name: s.name,
+        programme: s.programme,
+        department: d.departmentById.get(s.departmentId)?.name ?? "—",
+        graduationYear: s.graduationYear,
+        cgpa: s.cgpa,
+        targetRole: dash.targetRole.title,
+        readiness: dash.readiness.score,
+        band: dash.readiness.band,
+        evidencePct: dash.evidenceConfidencePct,
+        biggestGap: dash.biggestGap?.name ?? "—",
+      };
+    })
+    .sort((a, b) => b.readiness - a.readiness);
+}
+
+export function getPlacementIntelligence(institutionId: Id) {
+  const d = ds();
+  const studentIds = new Set(
+    d.students
+      .filter((s) => s.institutionId === institutionId)
+      .map((s) => s.id),
+  );
+  const outcomes = d.placements.filter((p) => studentIds.has(p.studentId));
+  const byRole = new Map<
+    string,
+    { count: number; ctc: number[]; ttoDays: number[]; gapClosed: number[] }
+  >();
+  for (const o of outcomes) {
+    const title = d.roleById.get(o.roleId)?.title ?? o.roleId;
+    const rec = byRole.get(title) ?? {
+      count: 0,
+      ctc: [],
+      ttoDays: [],
+      gapClosed: [],
+    };
+    rec.count++;
+    rec.ctc.push(o.ctcLpa);
+    rec.ttoDays.push(o.timeToOfferDays);
+    rec.gapClosed.push(o.skillGapClosed);
+    byRole.set(title, rec);
+  }
+  const roleRows = [...byRole.entries()]
+    .map(([title, r]) => ({
+      title,
+      count: r.count,
+      medianCtc: median(r.ctc) ?? 0,
+      avgDays: Math.round(
+        r.ttoDays.reduce((a, b) => a + b, 0) / r.ttoDays.length,
+      ),
+      avgGapClosed:
+        Math.round(
+          (r.gapClosed.reduce((a, b) => a + b, 0) / r.gapClosed.length) * 10,
+        ) / 10,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const readinessDelta = outcomes.map((o) => ({
+    start: o.readinessAtStart,
+    offer: o.readinessAtOffer,
+    delta: o.readinessAtOffer - o.readinessAtStart,
+  }));
+  const avgDelta = readinessDelta.length
+    ? Math.round(
+        readinessDelta.reduce((a, b) => a + b.delta, 0) / readinessDelta.length,
+      )
+    : 0;
+  const conversions = outcomes.filter(
+    (o) => o.type === "internship_conversion",
+  ).length;
+
+  return {
+    total: outcomes.length,
+    conversions,
+    conversionPct: outcomes.length
+      ? Math.round((conversions / outcomes.length) * 100)
+      : 0,
+    avgReadinessGain: avgDelta,
+    roleRows,
+    scatter: outcomes
+      .map((o) => ({
+        readiness: o.readinessAtOffer,
+        ctc: o.ctcLpa,
+        days: o.timeToOfferDays,
+      }))
+      .sort((a, b) => a.readiness - b.readiness),
+  };
+}
+
+function median(xs: number[]): number | undefined {
+  if (!xs.length) return undefined;
+  const s = [...xs].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : Math.round(((s[m - 1] + s[m]) / 2) * 10) / 10;
+}
+
 // ── demand ─────────────────────────────────────────────────────────────────
 
 export function getDemandReport() {
@@ -574,6 +764,163 @@ export function verifyCredential(credentialId: string) {
 }
 
 // ── misc list helpers used by pages ────────────────────────────────────────
+
+// ── competency graph (for the visual) ──────────────────────────────────────
+
+export interface GraphData {
+  student: { id: Id; name: string; targetRole: string };
+  competencies: Array<{
+    id: Id;
+    name: string;
+    level: number;
+    nsqfBand: number;
+    required: number;
+    met: boolean;
+    inTarget: boolean;
+    evidence: number;
+    skillIds: Id[];
+  }>;
+  skills: Array<{
+    id: Id;
+    name: string;
+    level: number;
+    confidence: string;
+    evidence: number;
+    competencyIds: Id[];
+    inProfile: boolean;
+  }>;
+}
+
+export function getCompetencyGraph(studentId: Id): GraphData {
+  const d = ds();
+  const student = d.studentById.get(studentId)!;
+  const targetRole = d.roleById.get(student.targetRoleId)!;
+  const profile = resolveStudent(studentId);
+  const reqByComp = new Map(
+    targetRole.requirements.map((r) => [r.competencyId, r]),
+  );
+
+  // competencies to show: the target role's + any the student has meaningful level in
+  const compIds = new Set<Id>(
+    targetRole.requirements.map((r) => r.competencyId),
+  );
+  for (const [cid, rc] of profile.competencies)
+    if (rc.level >= 2) compIds.add(cid);
+
+  const competencies = [...compIds]
+    .map((cid) => {
+      const comp = d.competencyById.get(cid)!;
+      const rc = profile.competencies.get(cid);
+      const req = reqByComp.get(cid);
+      return {
+        id: cid,
+        name: comp.name,
+        level: Math.round((rc?.level ?? 0) * 10) / 10,
+        nsqfBand: comp.nsqfBand,
+        required: req?.minLevel ?? 0,
+        met: req ? (rc?.level ?? 0) + 1e-9 >= req.minLevel : false,
+        inTarget: Boolean(req),
+        evidence: Math.round((rc?.evidence ?? 0) * 100) / 100,
+        skillIds: comp.skillIds,
+      };
+    })
+    .sort(
+      (a, b) => Number(b.inTarget) - Number(a.inTarget) || b.level - a.level,
+    );
+
+  const skillIds = new Set<Id>();
+  for (const c of competencies) c.skillIds.forEach((s) => skillIds.add(s));
+
+  const skills = [...skillIds].map((sid) => {
+    const rs = profile.skills.get(sid);
+    const skill = d.skillById.get(sid)!;
+    return {
+      id: sid,
+      name: skill.name,
+      level: rs?.effectiveLevel ?? 0,
+      confidence: rs?.evidence.confidence ?? "low",
+      evidence: Math.round((rs?.evidence.score ?? 0) * 100) / 100,
+      competencyIds: competencies
+        .filter((c) => c.skillIds.includes(sid))
+        .map((c) => c.id),
+      inProfile: Boolean(rs),
+    };
+  });
+
+  return {
+    student: {
+      id: student.id,
+      name: student.name,
+      targetRole: targetRole.title,
+    },
+    competencies,
+    skills,
+  };
+}
+
+export function getPassport(studentId: Id) {
+  const d = ds();
+  const student = d.studentById.get(studentId)!;
+  const dash = getStudentDashboard(studentId);
+  const profile = dash.profile;
+
+  const competencyRows = [...profile.competencies.values()]
+    .filter((rc) => rc.level >= 2)
+    .sort((a, b) => b.level - a.level)
+    .map((rc) => ({
+      id: rc.competencyId,
+      name: rc.competency.name,
+      level: Math.round(rc.level * 10) / 10,
+      nsqfBand: rc.competency.nsqfBand,
+      evidence: Math.round(rc.evidence * 100),
+      skills: rc.competency.skillIds
+        .map((sid) => profile.skills.get(sid))
+        .filter((rs): rs is NonNullable<typeof rs> => Boolean(rs))
+        .map((rs) => ({
+          name: rs.skill?.name ?? rs.skillId,
+          level: rs.effectiveLevel,
+          confidence: rs.evidence.confidence,
+        })),
+    }));
+
+  const verifiedSkills = [...profile.skills.values()]
+    .filter(
+      (rs) =>
+        rs.evidence.confidence === "verified" ||
+        rs.evidence.confidence === "high",
+    )
+    .sort((a, b) => b.evidence.score - a.evidence.score)
+    .map((rs) => ({
+      name: rs.skill?.name ?? rs.skillId,
+      level: rs.effectiveLevel,
+      confidence: rs.evidence.confidence,
+      rationale: rs.evidence.rationale,
+    }));
+
+  const credential =
+    studentId === "stu-aarav"
+      ? d.credentialById.get("KS-PASSPORT-AARAV")
+      : d.credentials.find(
+          (c) => c.studentId === studentId && c.kind === "competency_passport",
+        );
+
+  return {
+    student,
+    dash,
+    institutionName: dash.institutionName,
+    departmentName: dash.departmentName,
+    competencyRows,
+    verifiedSkills,
+    projects: d.projects.filter((p) => p.studentId === studentId),
+    certifications: d.certifications.filter((c) => c.studentId === studentId),
+    endorsements: student.endorsements.map((e) => ({
+      ...e,
+      competencyName:
+        d.competencyById.get(e.competencyId)?.name ?? e.competencyId,
+    })),
+    credential,
+  };
+}
 
 export function evidenceForSkill(studentId: Id, skillId: Id) {
   const d = ds();

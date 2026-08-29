@@ -1154,6 +1154,35 @@ export function generate(): DemoData {
     checkCode: checkCode("KS-ASSESS-ANANYA-GMP"),
   });
 
+  // A competency-passport credential for every student, so /verify works for any
+  // profile a judge navigates to. Competencies listed = the student's top three
+  // by resolved level among their target-role requirements.
+  for (const s of students) {
+    if (s.id === "stu-aarav") continue; // already has a richer one
+    const id = `KS-PASSPORT-${s.id.toUpperCase().replace("STU-", "")}`;
+    credentials.push({
+      id,
+      studentId: s.id,
+      kind: "competency_passport",
+      title: `Competency Passport — ${s.name}`,
+      issuer: `KaushalSetu (institution: ${
+        institutions.find((i) => i.id === s.institutionId)?.shortName ?? "—"
+      })`,
+      issuedAt: isoDaysAgo(rng.int(1, 30)),
+      competencyIds: roleById
+        .get(s.targetRoleId)!
+        .requirements.slice(0, 3)
+        .map((r) => r.competencyId),
+      evidenceSummary: [
+        `Target role: ${roleById.get(s.targetRoleId)!.title}`,
+        `${s.skills.length} skills on record`,
+        `${s.endorsements.length} endorsement(s)`,
+      ],
+      status: "active",
+      checkCode: checkCode(id),
+    });
+  }
+
   // ── Placement outcomes ───────────────────────────────────────────────
   const placements: PlacementOutcome[] = [];
   for (let i = 0; i < 28; i++) {
