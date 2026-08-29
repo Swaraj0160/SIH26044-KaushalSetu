@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/*
+ * Explicit content sources. Tailwind v4 auto-detection did not pick up the app/
+ * and components/ trees in the Turbopack production build, so we name them.
+ */
+@source "../app/**/*.{ts,tsx}";
+@source "../components/**/*.{ts,tsx}";
+@source "../lib/**/*.{ts,tsx}";
+
 @custom-variant dark (&:is(.dark *));
 
 /*
