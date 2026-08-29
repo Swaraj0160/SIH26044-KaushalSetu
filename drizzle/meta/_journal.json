@@ -5,8 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1788030702024,
-      "tag": "0000_init_health_check",
+      "when": 1788037445138,
+      "tag": "0000_init_schema",
       "breakpoints": true
     }
   ]
