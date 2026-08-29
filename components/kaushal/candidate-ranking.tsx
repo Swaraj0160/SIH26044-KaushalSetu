@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 
+import { setOverrideAction } from "@/app/actions";
 import { MatchBreakdown } from "@/components/kaushal/match-breakdown";
 import { MatchScore } from "@/components/kaushal/primitives";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { MatchResult } from "@/lib/engines";
 import { cn } from "@/lib/utils";
@@ -19,10 +21,52 @@ export interface CandidateVM {
   match: MatchResult;
 }
 
+const STAGE_ACTIONS = [
+  ["shortlisted", "Shortlist"],
+  ["interview", "Invite to interview"],
+  ["offer", "Make an offer"],
+] as const;
+
+function CandidateActions({
+  oppId,
+  studentId,
+  current,
+}: {
+  oppId: string;
+  studentId: string;
+  current?: string;
+}) {
+  return (
+    <div className="bg-muted/50 mt-3 flex flex-wrap items-center gap-2 rounded-lg p-2.5">
+      <span className="text-muted-foreground text-xs">Move to:</span>
+      {STAGE_ACTIONS.map(([value, label]) => (
+        <form key={value} action={setOverrideAction}>
+          <input type="hidden" name="key" value={`app:${oppId}:${studentId}`} />
+          <input type="hidden" name="value" value={value} />
+          <input type="hidden" name="revalidate" value="/recruiter" />
+          <button
+            disabled={current === value}
+            className="border-border bg-card hover:bg-primary-muted hover:text-primary rounded-md border px-2.5 py-1 text-xs font-medium disabled:opacity-40"
+          >
+            {label}
+          </button>
+        </form>
+      ))}
+      {current ? (
+        <Badge variant="info" className="ml-auto capitalize">
+          now: {current.replace(/_/g, " ")}
+        </Badge>
+      ) : null}
+    </div>
+  );
+}
+
 export function CandidateRanking({
   candidates,
+  oppId,
 }: {
   candidates: CandidateVM[];
+  oppId: string;
 }) {
   const [open, setOpen] = useState<string | null>(candidates[0]?.id ?? null);
   const [compare, setCompare] = useState<[string, string] | null>(null);
@@ -84,6 +128,11 @@ export function CandidateRanking({
             {isOpen ? (
               <div className="border-border border-t p-4">
                 <MatchBreakdown match={c.match} />
+                <CandidateActions
+                  oppId={oppId}
+                  studentId={c.id}
+                  current={c.applicationStatus}
+                />
                 <div className="mt-3 flex gap-2">
                   {candidates
                     .filter((x) => x.id !== c.id)

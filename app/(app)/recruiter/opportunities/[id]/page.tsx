@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { rankCandidatesForOpportunity } from "@/lib/data";
 import { getDataset } from "@/lib/demo/dataset";
 import { requireRole } from "@/lib/guards";
+import { getOverrides } from "@/lib/overrides";
 import { personaEmployerId } from "@/lib/session";
 
 export default async function RecruiterOpportunityDetail({
@@ -25,6 +26,7 @@ export default async function RecruiterOpportunityDetail({
   const role = d.roleById.get(opp.roleId)!;
 
   const ranked = rankCandidatesForOpportunity(id);
+  const overrides = await getOverrides();
   const candidates: CandidateVM[] = ranked.map((c) => ({
     id: c.student.id,
     name: c.student.name,
@@ -32,7 +34,8 @@ export default async function RecruiterOpportunityDetail({
     institution: c.institutionName,
     headline: c.student.headline,
     experienceMonths: c.experienceMonths,
-    applicationStatus: c.application?.status,
+    applicationStatus:
+      overrides[`app:${id}:${c.student.id}`] ?? c.application?.status,
     match: c.match,
   }));
 
@@ -96,7 +99,7 @@ export default async function RecruiterOpportunityDetail({
         </CardContent>
       </Card>
 
-      <CandidateRanking candidates={candidates} />
+      <CandidateRanking candidates={candidates} oppId={id} />
 
       <p className="text-muted-foreground text-xs">
         This is not a black-box ATS. Weights are configurable (see the
