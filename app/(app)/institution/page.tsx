@@ -92,8 +92,20 @@ export default async function InstitutionCommandCenter() {
               >
                 <span className="font-medium">{g.skill}</span>
                 <span className="text-muted-foreground flex items-center gap-2 text-xs">
-                  <span>{g.students} students affected</span>
-                  <Badge variant="danger">mean L{g.meanLevel}</Badge>
+                  <span>
+                    {g.belowBarPct}% below L4 · {g.students} students
+                  </span>
+                  <Badge
+                    variant={
+                      g.severity === "critical"
+                        ? "danger"
+                        : g.severity === "weak"
+                          ? "warning"
+                          : "muted"
+                    }
+                  >
+                    mean L{g.meanLevel}
+                  </Badge>
                 </span>
               </div>
             ))}

@@ -394,7 +394,13 @@ export interface InstitutionOverview {
   placementReady: number;
   internshipActive: number;
   meanReadiness: number;
-  criticalGaps: Array<{ skill: string; students: number; meanLevel: number }>;
+  criticalGaps: Array<{
+    skill: string;
+    students: number;
+    meanLevel: number;
+    belowBarPct: number;
+    severity: "critical" | "weak" | "watch";
+  }>;
   departments: Array<{
     id: Id;
     name: string;
@@ -513,15 +519,26 @@ export function getInstitutionOverview(institutionId: Id): InstitutionOverview {
     }
   }
   const criticalGaps = [...gapAgg.entries()]
-    .map(([sid, rec]) => ({
-      skill: d.skillById.get(sid)?.name ?? sid,
-      students: rec.students,
-      meanLevel:
+    .map(([sid, rec]) => {
+      const meanLevel =
         Math.round(
           (rec.levels.reduce((a, b) => a + b, 0) / rec.levels.length) * 10,
-        ) / 10,
-    }))
-    .filter((g) => g.meanLevel < 4)
+        ) / 10;
+      // share of students below "Practitioner" (L4) on this mandatory skill
+      const belowBar = rec.levels.filter((l) => l < 4).length;
+      return {
+        skill: d.skillById.get(sid)?.name ?? sid,
+        students: rec.students,
+        meanLevel,
+        belowBarPct: Math.round((belowBar / rec.levels.length) * 100),
+        severity: (meanLevel < 3.2
+          ? "critical"
+          : meanLevel < 4
+            ? "weak"
+            : "watch") as "critical" | "weak" | "watch",
+      };
+    })
+    // Always surface the weakest mandatory skills — the ranking is the signal.
     .sort((a, b) => a.meanLevel - b.meanLevel)
     .slice(0, 6);
 

@@ -113,11 +113,34 @@ Until step 1, everything still runs; DB-backed features throw a clear
 Migrations in `drizzle/` are committed. Never edit an already-applied migration —
 add a new one.
 
+## Demo mode (how the prototype runs with no credentials)
+
+The product runs entirely on a **seeded synthetic dataset** held in memory
+(`lib/demo/`), not a database:
+
+- `lib/demo/taxonomy.ts` — hand-authored skills / competencies / roles / resources.
+- `lib/demo/generate.ts` — deterministic generator (66 students incl. two hero
+  personas, 16 employers, opportunities, applications, internships, credentials,
+  placements, collaborations, audit).
+- `lib/demo/dataset.ts` — memoised assembly + lookup indexes (`getDataset()`).
+- `lib/data/` — turns dataset + engines into view-models. **A production build
+  reimplements `lib/data` against Drizzle without touching the UI or engines.**
+
+Auth in demo mode is a signed **persona cookie** (`lib/session.ts`) set by the
+`/demo` page; `requireRole()` (`lib/guards.ts`) enforces access server-side. The
+real Supabase Auth path is scaffolded in `lib/auth/`.
+
+Judge actions that must have a visible effect (apply, verify evidence, advance a
+collaboration, verify an employer) write to a short-lived session cookie
+(`lib/applied.ts`, `lib/overrides.ts`) — no shared mutation, no fake persistence.
+
 ## AI provider
 
-- Default `mock`: `MockAiProvider` — deterministic, offline, no key.
-- To use Gemini later: `npm i @google/genai`, implement `lib/ai/gemini-provider.ts`,
-  set `AI_PROVIDER=gemini` and `GEMINI_API_KEY`. No other code changes.
+- Default `mock`: `MockAiProvider` — deterministic, offline, no key. The Career
+  Copilot grounds every answer in real engine output regardless of provider.
+- To use Gemini: `npm i @google/genai`, implement `lib/ai/gemini-provider.ts`
+  with a dynamic import, set `AI_PROVIDER=gemini` and `GEMINI_API_KEY`. No other
+  code changes; AI stays barred from scoring and authorization.
 
 ## Troubleshooting / recovery
 
