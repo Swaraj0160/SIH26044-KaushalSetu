@@ -43,12 +43,57 @@ setup phase onward and are enforced in review.
   referrer policy) are added centrally in `next.config.ts` / middleware in the
   master build phase, before any real data is served.
 
-## Auth (when enabled)
+## Authentication architecture (planned)
 
-- Supabase Auth via `@supabase/ssr`. Session refresh via middleware; server-side
-  authorization checks on every protected route and Server Action.
-- Role model (student / faculty / recruiter / institution admin) enforced both in
-  application code and in Postgres RLS policies.
+- Supabase Auth via `@supabase/ssr`. Separate browser / server clients already
+  exist (`lib/auth/supabase/`).
+- Session refresh in Next.js middleware; every protected route, layout and Server
+  Action re-checks the session server-side.
+- Email/password + OTP to start; OAuth providers added only if needed.
+
+## Authorization architecture (planned)
+
+- **Role model:** `student`, `faculty`, `recruiter`, `institution_admin`,
+  `platform_admin`. Role stored on a `profiles` row keyed by `auth.users.id`.
+- **Two enforcement layers, both required:**
+  1. Application layer — a `requireRole()` / `requireUser()` guard in Server
+     Actions and route handlers; UI never the only gate.
+  2. Database layer — Postgres **Row-Level Security** policies on every table so a
+     leaked/forged client token still cannot read or write another tenant's rows.
+- Institution-scoped data is filtered by `institution_id` in RLS, not just in
+  queries.
+- The service-role key is used only in trusted server jobs that have already done
+  their own authorization checks.
+
+## Rate limiting strategy (planned)
+
+- Not implemented in the setup phase (no public mutating endpoints yet).
+- Plan: a small fixed-window / token-bucket limiter keyed by IP + user id, backed
+  by Postgres (or Upstash Redis if volume warrants), applied in middleware to:
+  auth endpoints, AI-invoking routes, file uploads, and any write-heavy API.
+- AI routes additionally get a per-user daily quota to bound cost.
+
+## File upload security plan
+
+- Uploads go to **Supabase Storage** buckets (`evidence`, `avatars`), never the
+  app server's filesystem.
+- Validate on the server: MIME type allow-list, extension check, max size,
+  and (for images) dimension / re-encode where practical.
+- Per-user path prefixes + Storage RLS so users can only access their own
+  objects. Downloads via short-lived **signed URLs**, not public buckets.
+- Never serve uploaded content from the app origin in a way that could execute
+  (correct `Content-Type`, `Content-Disposition: attachment` for non-images).
+- Antivirus / content scanning is out of scope for the prototype — documented as
+  a production gap, not silently skipped.
+
+## Audit logging strategy (planned)
+
+- An append-only `audit_log` table: `(id, actor_id, action, subject_type,
+subject_id, metadata jsonb, ip, created_at)`.
+- Written for security-relevant events: sign-in / sign-out, role changes,
+  evidence verification decisions, data exports, admin actions.
+- No secrets or full PII payloads in the log — identifiers and action names only.
+- Readable only by `platform_admin` (enforced by RLS).
 
 ## Dependencies
 

@@ -48,6 +48,62 @@ When a factual claim is required:
   organisational facts.
 - Do **not** claim an integration exists unless it is actually wired up.
 
+## Security rules
+
+- Secrets never enter source or git. Only `NEXT_PUBLIC_*` vars reach the browser.
+- `SUPABASE_SERVICE_ROLE_KEY` and any AI key are **server-only**. `lib/storage`
+  and other privileged modules use `import "server-only"`.
+- All external input is validated with Zod before use (`lib/validation/`).
+- Enforce authorization on every protected route / Server Action **and** in
+  Postgres RLS. Never trust the client.
+- Add security headers (CSP, HSTS, nosniff, frame/referrer policy) centrally
+  before serving real data.
+- Uploaded files: validate type/size, store in Supabase Storage with per-user
+  RLS, serve via short-lived signed URLs, never execute.
+- See `SECURITY.md` for the full baseline and the honestly-labelled future work.
+
+## Git rules
+
+- Work on `main` for setup; use short-lived feature branches once the product
+  build starts. Keep `main` green and deployable.
+- Logical, well-messaged commits. No noise commits, no giant dumps.
+- **Never** `git push --force`, `git reset --hard` (without explicit go-ahead),
+  rewrite pushed history, or delete branches unexpectedly.
+- Never commit `.env`, `.env.local`, `.env.*.local`, `.vercel/`, keys or tokens.
+- Remote is `origin` → `https://github.com/Swaraj0160/SIH26044-KaushalSetu` (private).
+  Do not change its visibility or create other repos.
+
+## Deployment rules
+
+- Target: **Vercel** (project `sih26044-kaushalsetu`, linked), Node 24, auto-deploy
+  from `main`; PRs get preview deployments.
+- Env vars are set in the Vercel dashboard (encrypted), never via CLI flags that
+  echo values, never committed.
+- `npm run build` must pass locally before relying on a deploy.
+- Local `vercel build` on Windows fails on a symlink EPERM step — this is an OS
+  limitation, not a project fault; the Linux build servers are unaffected.
+- Do not deploy a broken `main`. Do not deploy the unfinished product for its own
+  sake.
+
+## AI rules
+
+- Product code depends only on the `AiProvider` interface (`lib/ai/`).
+- Default provider is `MockAiProvider` (deterministic, offline). The app must
+  always work with no AI key.
+- `GeminiAiProvider` activates only when `AI_PROVIDER=gemini` and `GEMINI_API_KEY`
+  are both present; otherwise the factory falls back to mock.
+- AI keys are server-only. AI output is never presented as verified fact and
+  never replaces deterministic business logic.
+
+## Testing rules
+
+- After significant changes run: `npm run lint`, `npm run typecheck`,
+  `npm run test`, `npm run build` (and `npm run test:e2e` for flows).
+- Tests must be real. No assertions that can't fail, no snapshot-only "coverage".
+- Unit tests are deterministic and offline (mock AI, no live DB). DB-touching
+  logic is tested against a test database or with the query layer mocked.
+- Add/extend tests with each feature; keep the smoke e2e passing.
+
 ## Autonomous development rules
 
 When given the master build prompt:

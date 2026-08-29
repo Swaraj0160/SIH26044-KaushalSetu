@@ -86,6 +86,31 @@ phase (2026-08-30) after checking current stable releases and cross-compatibilit
 - `AI_PROVIDER=gemini` + `GEMINI_API_KEY` switches providers with no code change;
   if the key is absent the factory falls back to mock.
 
+## Deployment architecture
+
+```
+GitHub (Swaraj0160/SIH26044-KaushalSetu, private)
+        │  push / PR
+        ▼
+Vercel project  swaraj0160s-projects/sih26044-kaushalsetu   (linked)
+   • main            → Production deployment
+   • pull requests   → Preview deployments
+   • runtime         → Node 24 serverless functions (region: default)
+   • env vars        → set in Vercel dashboard (encrypted), per environment
+        │
+        ├── Postgres  ── Supabase (pooled 6543 for app, direct 5432 for migrations)
+        ├── Auth      ── Supabase Auth (@supabase/ssr cookies)
+        └── Storage   ── Supabase Storage (signed URLs)
+```
+
+- No separate backend service — Next.js Route Handlers / Server Actions run as
+  Vercel functions.
+- `next build` is the single build path (local, CI, and Vercel all run it).
+- `vercel.json` only pins `framework: nextjs` and `git.deploymentEnabled.main`;
+  everything else is Vercel's Next.js defaults.
+- Local `vercel build` on Windows stops at a symlink `EPERM` (OS limitation);
+  `npm run build` is the local check. Linux build servers are unaffected.
+
 ## Known advisories (tracked, not blocking)
 
 - `npm audit` reports 4 **moderate**, all from `drizzle-kit` → `@esbuild-kit/*` →

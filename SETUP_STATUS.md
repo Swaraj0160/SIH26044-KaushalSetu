@@ -1,7 +1,9 @@
 # SETUP_STATUS
 
 Environment inspection for **SIH26044 — KaushalSetu**.
-Generated during the setup phase on **2026-08-30**.
+Generated during the setup phase on **2026-08-30**; updated in the pre-flight
+phase the same day (GitHub connected, Vercel linked, `gh` installed).
+See `PREFLIGHT_COMPLETE.md` for the consolidated readiness matrix.
 
 ## 1. Machine
 
@@ -14,62 +16,71 @@ Generated during the setup phase on **2026-08-30**.
 
 ## 2. Toolchain
 
-| Tool              | Version  | Status                                       |
-| ----------------- | -------- | -------------------------------------------- |
-| Node.js           | v24.11.0 | OK — matches Vercel's current `24.x` runtime |
-| npm               | 11.6.1   | OK (package manager for this repo)           |
-| Git               | 2.55.0   | OK                                           |
-| Python            | 3.12.7   | OK (not required by the app)                 |
-| Docker            | 29.6.2   | OK (available, not required yet)             |
-| corepack          | 0.34.0   | Available                                    |
-| GitHub CLI (`gh`) | —        | **NOT INSTALLED** — see ACTION REQUIRED      |
-| Vercel CLI        | 59.10.0  | Installed globally during setup              |
-| pnpm              | —        | Not installed (npm is used; not needed)      |
+| Tool              | Version  | Status                                                              |
+| ----------------- | -------- | ------------------------------------------------------------------- |
+| Node.js           | v24.11.0 | OK — matches Vercel's current `24.x` runtime                        |
+| npm               | 11.6.1   | OK (package manager for this repo)                                  |
+| Git               | 2.55.0   | OK                                                                  |
+| Python            | 3.12.7   | OK (not required by the app)                                        |
+| Docker            | 29.6.2   | OK (available, not required yet)                                    |
+| corepack          | 0.34.0   | Available                                                           |
+| GitHub CLI (`gh`) | 2.98.0   | Installed via winget; not `gh auth`-logged (git push works via GCM) |
+| Vercel CLI        | 59.10.0  | Installed globally; authenticated as `swaraj0160`                   |
+| pnpm              | —        | Not installed (npm is used; not needed)                             |
+| tsx               | 4.23.x   | Added — runs `scripts/seed.ts`                                      |
 
 ## 3. Repository
 
-| Item              | Value                                                  |
-| ----------------- | ------------------------------------------------------ |
-| Git repo (before) | No — directory was empty and untracked                 |
-| Git repo (after)  | Yes — initialised on branch `main` during setup        |
-| Remote            | **None configured** — see ACTION REQUIRED              |
-| Git identity      | `Swaraj Ingale <swaraj0160@gmail.com>` (global config) |
+| Item              | Value                                                                     |
+| ----------------- | ------------------------------------------------------------------------- |
+| Git repo          | Initialised on branch `main`                                              |
+| Remote            | `origin` → `https://github.com/Swaraj0160/SIH26044-KaushalSetu` (private) |
+| Remote state      | Was **empty**; setup commit pushed. `main` tracks `origin/main`           |
+| Git identity      | `Swaraj Ingale <swaraj0160@gmail.com>` (global config)                    |
+| Credential helper | Git Credential Manager (`manager`) — has a cached github.com credential   |
 
 ## 4. Authentication
 
-| Service    | Status                                                       |
-| ---------- | ------------------------------------------------------------ |
-| Vercel CLI | **Authenticated** as `swaraj0160`                            |
-| GitHub     | **Unknown / unverified** — `gh` not installed, no remote set |
+| Service           | Status                                                                    |
+| ----------------- | ------------------------------------------------------------------------- |
+| Vercel CLI        | **Authenticated** as `swaraj0160`; project `sih26044-kaushalsetu` linked  |
+| GitHub (git)      | **Working** — HTTPS push/pull succeed via Git Credential Manager          |
+| GitHub (`gh` CLI) | **Not logged in** — optional; run `gh auth login` for PR/issue automation |
 
 No credentials, tokens, or secrets were printed, stored, or committed.
+`.env.local` and `.vercel/` (both containing a short-lived Vercel OIDC token) are
+git-ignored and untracked.
 
 ## 5. Application build (setup scaffold)
 
-| Check                           | Result                                                       |
-| ------------------------------- | ------------------------------------------------------------ |
-| `npm run lint`                  | PASS                                                         |
-| `npm run typecheck`             | PASS                                                         |
-| `npm run test` (Vitest)         | PASS — 8/8                                                   |
-| `npm run test:e2e` (Playwright) | PASS — 3/3 (Chromium)                                        |
-| `npm run build` (Next 16)       | PASS — routes: `/`, `/health`, `/api/health`                 |
-| `/api/health` live probe        | 200 — `database: not_configured`, `ai: mock`                 |
-| `npm run db:generate`           | PASS — produced `drizzle/0000_init_health_check.sql` offline |
+| Check                           | Result                                                                                        |
+| ------------------------------- | --------------------------------------------------------------------------------------------- |
+| `npm run lint`                  | PASS                                                                                          |
+| `npm run typecheck`             | PASS                                                                                          |
+| `npm run test` (Vitest)         | PASS — 8/8                                                                                    |
+| `npm run test:e2e` (Playwright) | PASS — 3/3 (Chromium)                                                                         |
+| `npm run build` (Next 16)       | PASS — routes: `/`, `/health`, `/api/health`                                                  |
+| `/api/health` live probe        | 200 — `database: not_configured`, `ai: mock`                                                  |
+| `npm run db:generate`           | PASS — produced `drizzle/0000_init_health_check.sql` offline                                  |
+| `npm run db:seed`               | PASS — graceful no-op without `DATABASE_URL`                                                  |
+| `vercel build` (local, Windows) | Compiles fully; fails only on a Windows symlink `EPERM` step (OS limitation, not the project) |
 
 ## 6. ACTION REQUIRED (your manual steps)
 
-1. **GitHub CLI + auth** (needed for Phase 14 push and future automation):
-   - Install: `winget install --id GitHub.cli` (then reopen the shell)
-   - Authenticate: `gh auth login` (choose HTTPS, follow the browser flow)
-2. **Create the GitHub repository** (private) and connect the remote. Either:
-   - `gh repo create SIH26044-KaushalSetu --private --source . --remote origin --push`, **or**
-   - create it in the GitHub UI, then:
-     `git remote add origin https://github.com/<your-user>/SIH26044-KaushalSetu.git && git push -u origin main`
-3. **Vercel project link** (optional until the master build phase):
-   - `vercel link` in this directory, then set env vars in the Vercel dashboard
-     (never via CLI flags that echo secrets).
-4. **Supabase** — not required yet. When ready, create a project and fill
-   `.env.local` from `.env.example` (see `DEVELOPMENT.md`).
+Nothing blocks the master build phase. The remaining manual items are all about
+providing **future credentials**:
 
-Nothing above blocks continuing to the master build phase except the GitHub
-push (Phase 14), which is deferred until `gh` is installed or a remote is added.
+1. **Supabase** — create a project, then set in `.env.local` (local) and the
+   Vercel project (deploy): `DATABASE_URL`, `DIRECT_URL`,
+   `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+   `SUPABASE_SERVICE_ROLE_KEY`. Template in `.env.example`.
+2. **Gemini** — when ready, set `GEMINI_API_KEY` and `AI_PROVIDER=gemini`. Until
+   then the app uses the deterministic mock provider.
+3. **`gh auth login`** _(optional)_ — only needed if you want Claude to open PRs /
+   issues from the CLI. Plain `git push`/`pull` already work.
+4. **Windows Developer Mode** _(optional)_ — enables local `vercel build`
+   (symlink step). Not needed for real deploys.
+
+Done during pre-flight (no action needed): `gh` installed, GitHub remote
+connected + setup commit pushed, Vercel CLI authenticated, Vercel project linked
+to the GitHub repo.

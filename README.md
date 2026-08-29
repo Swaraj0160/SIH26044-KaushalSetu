@@ -7,13 +7,15 @@
 
 ## Current status
 
-**Setup phase complete — the product has not been built yet.**
+**Pre-flight complete — the product has not been built yet.**
 
 This repository currently contains a validated development environment only:
 a Next.js 16 + TypeScript scaffold with the database, auth, storage, AI-provider
 and testing architecture in place, a working health check, and green
-lint / typecheck / build / unit tests. No product features exist yet
+lint / typecheck / unit / e2e / build. It is connected to GitHub
+(`origin/main`) and linked to a Vercel project. No product features exist yet
 (no dashboards, no matching engine, no schema beyond a placeholder table).
+See [`PREFLIGHT_COMPLETE.md`](./PREFLIGHT_COMPLETE.md) for the readiness matrix.
 
 The next phase builds the product toward: **competency intelligence + evidence +
 skill-gap analysis + guided action + industry matching + verified experience +
@@ -77,6 +79,7 @@ verified and what still needs manual action.
 | [`SECURITY.md`](./SECURITY.md)                           | Secret handling, client/server boundary, validation    |
 | [`CLAUDE.md`](./CLAUDE.md)                               | Permanent engineering rules for autonomous development |
 | [`DEVELOPMENT_CHECKLIST.md`](./DEVELOPMENT_CHECKLIST.md) | Setup checklist                                        |
+| [`PREFLIGHT_COMPLETE.md`](./PREFLIGHT_COMPLETE.md)       | Consolidated readiness matrix + action items           |
 
 ## Licence
 
