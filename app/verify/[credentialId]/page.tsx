@@ -6,7 +6,7 @@ import { Qr } from "@/components/kaushal/qr";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { verifyCredential } from "@/lib/data";
-import { env } from "@/lib/env";
+import { appUrl } from "@/lib/env";
 
 export const metadata: Metadata = {
   title: "Credential verification",
@@ -20,7 +20,7 @@ export default async function VerifyPage({
 }) {
   const { credentialId } = await params;
   const result = verifyCredential(credentialId);
-  const base = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  const base = appUrl();
 
   return (
     <div className="bg-muted/30 min-h-screen">

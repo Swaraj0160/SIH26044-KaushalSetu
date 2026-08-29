@@ -16,9 +16,12 @@ export function SideNav({ items }: { items: NavItem[] }) {
   return (
     <nav className="flex flex-col gap-0.5">
       {items.map((it) => {
+        // Prefix-match only for nested items (3+ path segments); section index
+        // pages like "/student" or "/recruiter" match exactly.
+        const nested = it.href.split("/").length > 2;
         const active =
           pathname === it.href ||
-          (it.href !== "/" && pathname.startsWith(it.href + "/"));
+          (nested && pathname.startsWith(it.href + "/"));
         return (
           <Link
             key={it.href}

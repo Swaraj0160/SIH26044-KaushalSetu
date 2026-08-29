@@ -800,12 +800,23 @@ export function getCompetencyGraph(studentId: Id): GraphData {
     targetRole.requirements.map((r) => [r.competencyId, r]),
   );
 
-  // competencies to show: the target role's + any the student has meaningful level in
-  const compIds = new Set<Id>(
+  // competencies to show: the target role's, plus up to 2 of the student's other
+  // strongest competencies (keeps the graph legible — 6–8 nodes, not 20).
+  const targetIds = new Set<Id>(
     targetRole.requirements.map((r) => r.competencyId),
   );
-  for (const [cid, rc] of profile.competencies)
-    if (rc.level >= 2) compIds.add(cid);
+  const extras = [...profile.competencies.values()]
+    .filter(
+      (rc) =>
+        !targetIds.has(rc.competencyId) &&
+        rc.level >= 3 &&
+        // real breadth, not one incidentally-shared skill
+        rc.requiredSkillsHeld >= 2,
+    )
+    .sort((a, b) => b.level - a.level)
+    .slice(0, 2)
+    .map((rc) => rc.competencyId);
+  const compIds = new Set<Id>([...targetIds, ...extras]);
 
   const competencies = [...compIds]
     .map((cid) => {

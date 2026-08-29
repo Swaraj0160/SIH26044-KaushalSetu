@@ -11,6 +11,9 @@ import { cn } from "@/lib/utils";
  * skills. Hover a node to isolate its neighbourhood. Not a decorative diagram —
  * every position and colour encodes real engine output.
  */
+/** Round coordinates so SSR and client stringify identically (no hydration drift). */
+const q = (n: number) => Math.round(n * 100) / 100;
+
 export function CompetencyGraph({ data }: { data: GraphData }) {
   const W = 640;
   const H = 520;
@@ -19,42 +22,53 @@ export function CompetencyGraph({ data }: { data: GraphData }) {
   const [hover, setHover] = useState<string | null>(null);
 
   const layout = useMemo(() => {
-    const comps = data.competencies.slice(0, 10);
+    const comps = data.competencies.slice(0, 8);
+    const angleOf = new Map<string, number>();
     const compAngle = (i: number) =>
       (i / comps.length) * Math.PI * 2 - Math.PI / 2;
     const compR = 150;
     const compPos = new Map(
-      comps.map((c, i) => [
-        c.id,
-        {
-          x: cx + Math.cos(compAngle(i)) * compR,
-          y: cy + Math.sin(compAngle(i)) * compR,
-        },
-      ]),
+      comps.map((c, i) => {
+        angleOf.set(c.id, compAngle(i));
+        return [
+          c.id,
+          {
+            x: q(cx + Math.cos(compAngle(i)) * compR),
+            y: q(cy + Math.sin(compAngle(i)) * compR),
+          },
+        ] as const;
+      }),
     );
 
-    // place each skill near the average of its competencies, pushed outward
-    const skills = data.skills.slice(0, 26).map((s) => {
-      const owners = s.competencyIds
-        .map((id) => compPos.get(id))
-        .filter(Boolean) as {
-        x: number;
-        y: number;
-      }[];
-      const base = owners.length
-        ? {
-            x: owners.reduce((a, o) => a + o.x, 0) / owners.length,
-            y: owners.reduce((a, o) => a + o.y, 0) / owners.length,
-          }
-        : { x: cx, y: cy };
-      const ang = Math.atan2(base.y - cy, base.x - cx);
-      const r = 250;
-      return {
-        ...s,
-        x: cx + Math.cos(ang) * r + (hashJitter(s.id) - 0.5) * 60,
-        y: cy + Math.sin(ang) * r + (hashJitter(s.id + "y") - 0.5) * 50,
-      };
-    });
+    // Group skills by their primary (first) shown competency, then fan them out
+    // on a fixed outer ring around that competency's angle. Deterministic, no
+    // stray nodes.
+    const byComp = new Map<string, typeof data.skills>();
+    for (const s of data.skills) {
+      const owner = s.competencyIds.find((id) => compPos.has(id));
+      if (!owner) continue;
+      const arr = byComp.get(owner) ?? [];
+      arr.push(s);
+      byComp.set(owner, arr);
+    }
+    const skillR = 250;
+    const skills: Array<
+      (typeof data.skills)[number] & { x: number; y: number }
+    > = [];
+    for (const [ownerId, arr] of byComp) {
+      const baseAng = angleOf.get(ownerId) ?? 0;
+      const spread = Math.min(0.9, 0.22 * arr.length);
+      arr.forEach((s, k) => {
+        const a =
+          baseAng +
+          (arr.length === 1 ? 0 : (k / (arr.length - 1) - 0.5) * spread);
+        skills.push({
+          ...s,
+          x: q(cx + Math.cos(a) * skillR),
+          y: q(cy + Math.sin(a) * skillR),
+        });
+      });
+    }
 
     return { comps, compPos, skills };
   }, [data, cx, cy]);
@@ -264,9 +278,4 @@ function initials(name: string): string {
 }
 function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
-}
-function hashJitter(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return (Math.abs(h) % 1000) / 1000;
 }

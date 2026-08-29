@@ -12,12 +12,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getPassport } from "@/lib/data";
 import { currentStudentId } from "@/lib/guards";
-import { env } from "@/lib/env";
+import { appUrl } from "@/lib/env";
 
 export default async function PassportPage() {
   const sid = await currentStudentId();
   const p = getPassport(sid);
-  const base = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  const base = appUrl();
   const verifyUrl = p.credential
     ? `${base}/verify/${p.credential.id}`
     : `${base}/verify`;

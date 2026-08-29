@@ -42,6 +42,24 @@ export const env = createEnv({
   emptyStringAsUndefined: true,
 });
 
+/**
+ * Absolute base URL for links that must resolve from outside the app (QR codes,
+ * the public /verify page). Prefers an explicit NEXT_PUBLIC_APP_URL, then the
+ * Vercel-provided production/deploy URL, then localhost.
+ */
+export function appUrl(): string {
+  if (
+    env.NEXT_PUBLIC_APP_URL &&
+    env.NEXT_PUBLIC_APP_URL !== "http://localhost:3000"
+  ) {
+    return env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  }
+  const vercel =
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
+  if (vercel) return `https://${vercel.replace(/\/$/, "")}`;
+  return "http://localhost:3000";
+}
+
 export function isDatabaseConfigured(): boolean {
   return Boolean(env.DATABASE_URL);
 }
