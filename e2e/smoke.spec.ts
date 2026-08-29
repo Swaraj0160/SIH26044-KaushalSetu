@@ -77,8 +77,10 @@ test("student journey: home → education → skills → projects → career →
   await expect(page.getByText(/evidence factory/i)).toBeVisible();
 
   await page.goto("/student/career");
-  await expect(page.getByText(/career goal/i)).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Goal$/ })).toBeVisible();
   await expect(page.getByText(/roles you are closest to/i)).toBeVisible();
+  await page.goto("/student/career?tab=readiness");
+  await expect(page.getByText(/deterministic score/i)).toBeVisible();
 
   await page.goto("/student/profile");
   await expect(page.getByText(/single source of truth/i)).toBeVisible();
@@ -141,4 +143,74 @@ test("credential verification: known id verifies, unknown id fails", async ({
   await expect(page.getByText(/Verified/i).first()).toBeVisible();
   await page.goto("/verify/KS-NOPE-0000");
   await expect(page.getByText(/not found/i)).toBeVisible();
+});
+
+test("internship workspace shows the full lifecycle pipeline", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: /continue as student/i }).click();
+  await page.waitForURL(/\/student$/);
+  await page.goto("/student/internship");
+  await expect(page.getByText(/^Lifecycle$/)).toBeVisible();
+  await expect(page.getByText(/Onboarding/).first()).toBeVisible();
+  await expect(page.getByText(/Mentor feedback/).first()).toBeVisible();
+  await expect(page.getByText(/Verified skills/).first()).toBeVisible();
+});
+
+test("achievements and certifications render with skill links", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: /continue as student/i }).click();
+  await page.waitForURL(/\/student$/);
+  await page.goto("/student/achievements");
+  await expect(
+    page.getByRole("heading", { name: /achievements/i }),
+  ).toBeVisible();
+  await page.goto("/student/certifications");
+  await expect(
+    page.getByRole("heading", { name: /certifications/i }),
+  ).toBeVisible();
+});
+
+test("legacy student list routes redirect into the Career destination", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: /continue as student/i }).click();
+  await page.waitForURL(/\/student$/);
+  await page.goto("/student/gaps");
+  await expect(page).toHaveURL(/\/student\/career\?tab=gaps/);
+  await page.goto("/student/simulator");
+  await expect(page).toHaveURL(/\/student\/career\?tab=explore/);
+});
+
+test("faculty verification offers approve and request-changes", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: /continue as faculty/i }).click();
+  await page.waitForURL(/\/faculty$/);
+  await page.goto("/faculty/verification");
+  await expect(
+    page.getByRole("button", { name: /^Approve$/ }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /request changes/i }).first(),
+  ).toBeVisible();
+});
+
+test("command palette opens with the keyboard and navigates", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: /continue as student/i }).click();
+  await page.waitForURL(/\/student$/);
+  await page.getByRole("button", { name: /open command palette/i }).click();
+  const box = page.getByPlaceholder(/jump to a page or action/i);
+  await expect(box).toBeVisible();
+  await box.fill("passport");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/student\/passport/);
 });

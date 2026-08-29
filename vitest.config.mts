@@ -9,7 +9,9 @@ export default defineConfig({
     alias: {
       "@": fileURLToPath(new URL("./", import.meta.url)),
       // `server-only` is a Next.js build-time guard with no runtime; stub it in tests.
-      "server-only": fileURLToPath(new URL("./tests/stubs/empty.ts", import.meta.url)),
+      "server-only": fileURLToPath(
+        new URL("./tests/stubs/empty.ts", import.meta.url),
+      ),
     },
   },
   test: {
