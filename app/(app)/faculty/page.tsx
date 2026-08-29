@@ -31,8 +31,8 @@ export default async function FacultyOverview() {
     <div className="space-y-6">
       <PageHeader
         title={faculty.name}
-        description={`${faculty.designation} · ${inst.name}`}
-        actions={<Badge variant="accent">Demo persona</Badge>}
+        description={`${faculty.designation} · ${inst.name} — your job here: verify student evidence and connect them to industry.`}
+        actions={<Badge variant="accent">Demo · Faculty</Badge>}
       />
 
       <div className="grid gap-4 sm:grid-cols-4">

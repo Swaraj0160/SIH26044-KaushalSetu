@@ -10,22 +10,128 @@ test("health API is green and reports a working AI provider", async ({
   expect(["mock", "gemini"]).toContain(body.ai.provider);
 });
 
-test("landing page communicates the positioning", async ({ page }) => {
+test("landing → Enter platform → sign-in screen", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    /skills to opportunities/i,
-  );
+  await page
+    .getByRole("link", { name: /enter platform/i })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
+  await expect(page.getByText(/demo environment/i)).toBeVisible();
+});
+
+test("unauthenticated workspace access redirects to /login", async ({
+  page,
+}) => {
+  await page.goto("/student");
+  await expect(page).toHaveURL(/\/login/);
+  await page.goto("/institution/heatmap");
+  await expect(page).toHaveURL(/\/login/);
+});
+
+test("manual sign-in with demo credentials routes to the role home", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByLabel(/username/i).fill("student");
+  await page.getByLabel(/password/i).fill("student123");
+  await page.getByRole("button", { name: /^sign in$/i }).click();
+  await page.waitForURL(/\/student$/);
   await expect(
-    page.getByRole("link", { name: /explore judge demo/i }).first(),
+    page.getByRole("heading", {
+      name: /good (morning|afternoon|evening), Aarav/i,
+    }),
   ).toBeVisible();
 });
 
-test("judge technical showcase renders", async ({ page }) => {
-  await page.goto("/judge");
+test("bad credentials show an error, no redirect", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel(/username/i).fill("student");
+  await page.getByLabel(/password/i).fill("nope");
+  await page.getByRole("button", { name: /^sign in$/i }).click();
+  await expect(page.getByText(/invalid demo credentials/i)).toBeVisible();
+  await expect(page).toHaveURL(/\/login/);
+});
+
+test("student journey: home → education → skills → projects → career → profile", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: /continue as student/i }).click();
+  await page.waitForURL(/\/student$/);
+
+  // orientation home: journey spine + next best action
+  await expect(page.getByText(/^your journey$/i)).toBeVisible();
+  await expect(page.getByText(/you are here/i)).toBeVisible();
+  await expect(page.getByText(/your next best action/i)).toBeVisible();
+
+  await page.goto("/student/education");
+  await expect(page.getByText(/where your skills came from/i)).toBeVisible();
+  await expect(page.getByText(/courses .* → skills produced/i)).toBeVisible();
+
+  await page.goto("/student/skills");
+  await expect(page.getByText(/evidence ledger/i)).toBeVisible();
+
+  await page.goto("/student/projects");
+  await expect(page.getByText(/evidence factory/i)).toBeVisible();
+
+  await page.goto("/student/career");
+  await expect(page.getByText(/career goal/i)).toBeVisible();
+  await expect(page.getByText(/roles you are closest to/i)).toBeVisible();
+
+  await page.goto("/student/profile");
+  await expect(page.getByText(/single source of truth/i)).toBeVisible();
+});
+
+test("wrong-role access bounces to the caller's own home", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: /continue as student/i }).click();
+  await page.waitForURL(/\/student$/);
+  await page.goto("/institution/heatmap");
+  await expect(page).toHaveURL(/\/student$/);
+});
+
+test("industry sign-in lands on the talent pipeline", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: /continue as industry/i }).click();
+  await page.waitForURL(/\/industry$/);
+  await expect(page.getByText(/talent pipeline/i)).toBeVisible();
+  await page.goto("/recruiter/opportunities/opp-hero-ml");
+  await expect(page.getByText(/candidate ranking/i)).toBeVisible();
+});
+
+test("institution sign-in → command center → heatmap drilldown", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: /continue as institution/i }).click();
+  await page.waitForURL(/\/institution$/);
+  await page.goto("/institution/heatmap");
   await expect(
-    page.getByRole("heading", { name: /technical showcase/i }),
+    page.getByRole("heading", { name: /institutional skill heatmap/i }),
   ).toBeVisible();
-  await expect(page.getByText(/deterministic engines/i)).toBeVisible();
+  await page.locator("table button").first().click();
+  await expect(
+    page.getByText(/recommended institutional action/i),
+  ).toBeVisible();
+});
+
+test("sign out returns to the landing page", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: /continue as faculty/i }).click();
+  await page.waitForURL(/\/faculty$/);
+  await page.getByRole("button", { name: /sign out/i }).click();
+  await page.waitForURL("/");
+  await expect(
+    page.getByRole("link", { name: /enter platform/i }).first(),
+  ).toBeVisible();
+});
+
+test("judge demo persona picker still works", async ({ page }) => {
+  await page.goto("/demo");
+  await page.getByRole("button", { name: /Enter as Aarav/i }).click();
+  await page.waitForURL(/\/student$/);
 });
 
 test("credential verification: known id verifies, unknown id fails", async ({
@@ -35,58 +141,4 @@ test("credential verification: known id verifies, unknown id fails", async ({
   await expect(page.getByText(/Verified/i).first()).toBeVisible();
   await page.goto("/verify/KS-NOPE-0000");
   await expect(page.getByText(/not found/i)).toBeVisible();
-});
-
-test("judge demo: enter as student, walk the core flow", async ({ page }) => {
-  await page.goto("/demo");
-  await page.getByRole("button", { name: /Enter as Aarav/i }).click();
-  await page.waitForURL(/\/student$/);
-  await expect(page.getByText(/Career readiness/i).first()).toBeVisible();
-
-  // competency graph present
-  await expect(
-    page.getByRole("img", { name: /Competency map/i }),
-  ).toBeVisible();
-
-  // explainable match on an opportunity
-  await page.goto("/student/opportunities/opp-hero-ml");
-  await expect(page.getByText(/Why this match/i)).toBeVisible();
-  await expect(page.getByText(/Mandatory competency coverage/i)).toBeVisible();
-  await expect(page.getByText(/How to become ready/i)).toBeVisible();
-
-  // skill gaps + roadmap
-  await page.goto("/student/gaps");
-  await expect(
-    page.getByText(/Sequenced to respect skill prerequisites/i),
-  ).toBeVisible();
-  await expect(page.getByText(/Evidence produced:/i).first()).toBeVisible();
-});
-
-test("judge demo: recruiter sees an explainable ranking reconciled to the student", async ({
-  page,
-}) => {
-  await page.goto("/demo");
-  await page.getByRole("button", { name: /Enter as Rohan/i }).click();
-  await page.waitForURL(/\/recruiter$/);
-  await page.goto("/recruiter/opportunities/opp-hero-ml");
-  await expect(page.getByText(/candidate ranking/i)).toBeVisible();
-  await expect(
-    page.getByText(/Mandatory competency coverage/i).first(),
-  ).toBeVisible();
-});
-
-test("judge demo: institution heatmap drills into a cell", async ({ page }) => {
-  await page.goto("/demo");
-  await page.getByRole("button", { name: /Enter as Dr\./i }).last().click();
-  await page.waitForURL(/\/institution$/);
-  await page.goto("/institution/heatmap");
-  await expect(
-    page.getByRole("heading", { name: /Institutional Skill Heatmap/i }),
-  ).toBeVisible();
-  // first heatmap cell button
-  const cell = page.locator("table button").first();
-  await cell.click();
-  await expect(
-    page.getByText(/Recommended institutional action/i),
-  ).toBeVisible();
 });

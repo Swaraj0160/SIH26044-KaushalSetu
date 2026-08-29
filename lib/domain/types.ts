@@ -136,14 +136,41 @@ export interface StudentSkill {
   evidence: SkillEvidenceRef[];
 }
 
+export type ProjectType =
+  "mini" | "major" | "personal" | "academic" | "industry" | "open_source";
+
+export type ProjectStatus =
+  "planned" | "in_progress" | "submitted" | "evaluated" | "archived";
+
+export interface ProjectEvaluation {
+  by: string;
+  role: "faculty" | "industry";
+  verdict: string;
+  score?: number;
+  date: string;
+}
+
 export interface Project {
   id: Id;
   studentId: Id;
   title: string;
+  type: ProjectType;
+  status: ProjectStatus;
   summary: string;
+  contribution: string; // the student's role
+  team: string[]; // co-contributor names, [] = solo
+  tech: string[];
   skillIds: Id[];
+  /** Competencies this project is meant to evidence. */
+  competencyClaims: Id[];
+  links: { repo?: string; demo?: string; docs?: string };
+  /** @deprecated legacy single link; use `links.repo` */
   url?: string;
+  period: string; // "Feb–Apr 2025"
   date: string;
+  courseCode?: string;
+  internshipId?: Id;
+  evaluations: ProjectEvaluation[];
   facultyVerifiedBy?: string;
 }
 
@@ -181,6 +208,29 @@ export interface Endorsement {
   date: string;
 }
 
+export type CourseGrade = "O" | "A+" | "A" | "B+" | "B" | "C" | "P";
+
+export interface Course {
+  code: string;
+  title: string;
+  credits: number;
+  term: string; // e.g. "Sem 4 · 2025"
+  grade: CourseGrade;
+  /** Skills this course develops (feeds the competency profile). */
+  skillIds: Id[];
+}
+
+export interface EducationRecord {
+  degree: string; // "B.Tech — Computer Science & Engineering"
+  institution: string;
+  department: string;
+  currentSemester: number;
+  academicYear: string; // "2025–26"
+  cgpa: number;
+  startYear: number;
+  courses: Course[];
+}
+
 export interface Student {
   id: Id;
   name: string;
@@ -191,6 +241,7 @@ export interface Student {
   graduationYear: number;
   semester: number;
   cgpa: number;
+  education: EducationRecord;
   city: string;
   photoSeed: string;
   headline: string;

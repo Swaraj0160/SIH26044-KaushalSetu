@@ -49,8 +49,14 @@ export default function Landing() {
           >
             Technical showcase
           </Link>
+          <Link
+            href="/demo"
+            className="text-muted-foreground hover:text-foreground hidden rounded-md px-3 py-1.5 sm:block"
+          >
+            Judge demo
+          </Link>
           <Button asChild size="sm">
-            <Link href="/demo">Explore judge demo</Link>
+            <Link href="/login">Enter platform</Link>
           </Button>
         </nav>
       </header>
@@ -74,10 +80,10 @@ export default function Landing() {
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Button asChild size="lg">
-              <Link href="/demo">Explore judge demo</Link>
+              <Link href="/login">Enter platform</Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href="/judge">See the engineering</Link>
+              <Link href="/demo">Explore judge demo</Link>
             </Button>
           </div>
 

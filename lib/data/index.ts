@@ -20,6 +20,7 @@ import {
   type ResolvedProfile,
   type SkillGapReport,
 } from "@/lib/engines";
+import { computeNextActions, type NextAction } from "@/lib/engines/next-action";
 import type {
   Application,
   Id,
@@ -956,4 +957,284 @@ export function evidenceForSkill(studentId: Id, skillId: Id) {
   const ss = s?.skills.find((x) => x.skillId === skillId);
   if (!ss) return undefined;
   return { ...scoreEvidence(ss.evidence), evidence: ss.evidence };
+}
+
+// ── student home: journey spine, next best action, activity ────────────────
+
+export interface JourneyStage {
+  n: number;
+  key: string;
+  label: string;
+  state: "done" | "current" | "upcoming";
+  detail: string;
+  href: string;
+}
+
+export function getJourney(studentId: Id): JourneyStage[] {
+  const d = ds();
+  const s = d.studentById.get(studentId)!;
+  const dash = getStudentDashboard(studentId);
+  const profile = dash.profile;
+  const skillsWithEvidence = [...profile.skills.values()].filter(
+    (r) => r.evidence.score >= 0.3,
+  ).length;
+  const projects = d.projects.filter((p) => p.studentId === studentId);
+  const internships = d.internships.filter((i) => i.studentId === studentId);
+  const activeIntern = internships.find((i) => i.status === "active");
+  const doneIntern = internships.some((i) => i.status === "completed");
+  const placed = d.placements.some((p) => p.studentId === studentId);
+  const readiness = dash.readiness.score;
+
+  const raw: Array<Omit<JourneyStage, "state">> = [
+    {
+      n: 1,
+      key: "education",
+      label: "Education",
+      href: "/student/education",
+      detail: `${s.education.courses.length} courses on record`,
+    },
+    {
+      n: 2,
+      key: "skills",
+      label: "Skills",
+      href: "/student/skills",
+      detail: `${profile.skills.size} skills`,
+    },
+    {
+      n: 3,
+      key: "evidence",
+      label: "Evidence",
+      href: "/student/skills",
+      detail: `${skillsWithEvidence} skills evidenced`,
+    },
+    {
+      n: 4,
+      key: "projects",
+      label: "Projects",
+      href: "/student/projects",
+      detail: `${projects.length} project${projects.length === 1 ? "" : "s"}`,
+    },
+    {
+      n: 5,
+      key: "internship",
+      label: "Internship",
+      href: "/student/internship",
+      detail: activeIntern
+        ? "in progress"
+        : doneIntern
+          ? "completed"
+          : "not started",
+    },
+    {
+      n: 6,
+      key: "readiness",
+      label: "Career readiness",
+      href: "/student/career",
+      detail: `${readiness}/100 for ${dash.targetRole.title}`,
+    },
+    {
+      n: 7,
+      key: "placement",
+      label: "Placement",
+      href: "/student/career",
+      detail: placed ? "offer received" : "not yet",
+    },
+  ];
+
+  const done = new Set<string>();
+  if (s.education.courses.length >= 3) done.add("education");
+  if (profile.skills.size >= 4) done.add("skills");
+  if (skillsWithEvidence >= 3) done.add("evidence");
+  if (projects.length >= 1) done.add("projects");
+  if (doneIntern) done.add("internship");
+  if (readiness >= 75) done.add("readiness");
+  if (placed) done.add("placement");
+
+  let currentSet = false;
+  return raw.map((r) => {
+    let state: JourneyStage["state"];
+    if (done.has(r.key)) state = "done";
+    else if (r.key === "internship" && activeIntern) {
+      state = "current";
+      currentSet = true;
+    } else if (!currentSet) {
+      state = "current";
+      currentSet = true;
+    } else state = "upcoming";
+    return { ...r, state };
+  });
+}
+
+export function getNextActions(studentId: Id): NextAction[] {
+  const d = ds();
+  const s = d.studentById.get(studentId)!;
+  const dash = getStudentDashboard(studentId);
+  const internships = d.internships.filter((i) => i.studentId === studentId);
+  const apps = dash.applications.map((a) => ({
+    ...a,
+    title: a.opportunity.title.split(" — ")[0],
+  }));
+
+  const unverifiedProjectSkills = new Set<string>();
+  for (const p of d.projects.filter((p) => p.studentId === studentId)) {
+    for (const sid of p.skillIds) unverifiedProjectSkills.add(sid);
+  }
+
+  return computeNextActions({
+    hasGoal: Boolean(s.targetRoleId),
+    targetRole: dash.targetRole,
+    profile: dash.profile,
+    readiness: dash.readiness,
+    gap: dash.gap,
+    internships,
+    applications: apps,
+    unverifiedProjectSkills,
+  });
+}
+
+export interface ActivityItem {
+  when: string;
+  label: string;
+  kind:
+    | "skill"
+    | "project"
+    | "internship"
+    | "application"
+    | "certificate"
+    | "endorsement";
+}
+
+export function getRecentActivity(studentId: Id, limit = 6): ActivityItem[] {
+  const d = ds();
+  const s = d.studentById.get(studentId)!;
+  const items: ActivityItem[] = [];
+
+  for (const p of d.projects.filter((p) => p.studentId === studentId)) {
+    items.push({
+      when: p.date,
+      kind: "project",
+      label: `Project ${p.status === "evaluated" ? "evaluated" : "logged"}: ${p.title}`,
+    });
+    for (const ev of p.evaluations)
+      items.push({
+        when: ev.date,
+        kind: "endorsement",
+        label: `${ev.role === "faculty" ? "Faculty" : "Industry"} evaluation received for ${p.title}`,
+      });
+  }
+  for (const c of d.certifications.filter((c) => c.studentId === studentId)) {
+    items.push({
+      when: c.date,
+      kind: "certificate",
+      label: `Certification: ${c.name} (${c.issuer})`,
+    });
+  }
+  for (const e of s.endorsements) {
+    items.push({
+      when: e.date,
+      kind: "endorsement",
+      label: `${e.role === "industry" ? "Industry" : "Faculty"} endorsed ${d.competencyById.get(e.competencyId)?.name ?? "a competency"}`,
+    });
+  }
+  for (const it of d.internships.filter((i) => i.studentId === studentId)) {
+    items.push({
+      when: it.startDate,
+      kind: "internship",
+      label: `Internship started at ${d.employerById.get(it.employerId)?.name ?? "an employer"}`,
+    });
+    if (it.finalEvaluation)
+      items.push({
+        when: it.endDate,
+        kind: "internship",
+        label: `Internship completed · mentor evaluation ${it.finalEvaluation.score}/100`,
+      });
+    else if (it.weeklyLogs.length)
+      items.push({
+        when: it.startDate,
+        kind: "internship",
+        label: `Mentor submitted weekly feedback (week ${it.weeklyLogs.length})`,
+      });
+  }
+  for (const a of d.applications.filter((a) => a.studentId === studentId)) {
+    const o = d.opportunityById.get(a.opportunityId);
+    items.push({
+      when: a.updatedAt,
+      kind: "application",
+      label: `Application to ${o?.title.split(" — ")[0] ?? "a role"} → ${a.status.replace(/_/g, " ")}`,
+    });
+  }
+  for (const rs of getStudentDashboard(studentId).profile.skills.values()) {
+    if (rs.evidence.confidence === "verified")
+      items.push({
+        when: "2026-06-01",
+        kind: "skill",
+        label: `${rs.skill?.name ?? rs.skillId} competency verified`,
+      });
+  }
+
+  return items
+    .filter((i) => i.when && i.when !== "")
+    .sort((a, b) => b.when.localeCompare(a.when))
+    .slice(0, limit);
+}
+
+export function getStudentHome(studentId: Id) {
+  const d = ds();
+  const s = d.studentById.get(studentId)!;
+  const dash = getStudentDashboard(studentId);
+  return {
+    student: s,
+    firstName: s.name.replace(/^Dr\.?\s+/i, "").split(" ")[0],
+    targetRole: dash.targetRole,
+    readiness: dash.readiness,
+    journey: getJourney(studentId),
+    nextActions: getNextActions(studentId),
+    activity: getRecentActivity(studentId, 5),
+    recommended: dash.recommended.slice(0, 3),
+  };
+}
+
+// ── education ─────────────────────────────────────────────────────────────
+
+export function getEducation(studentId: Id) {
+  const d = ds();
+  const s = d.studentById.get(studentId)!;
+  const profile = resolveStudent(studentId);
+  return {
+    ...s.education,
+    graduationYear: s.graduationYear,
+    programme: s.programme,
+    courses: s.education.courses.map((c) => ({
+      ...c,
+      skills: c.skillIds.map((sid) => {
+        const rs = profile.skills.get(sid);
+        return {
+          id: sid,
+          name: d.skillById.get(sid)?.name ?? sid,
+          heldLevel: rs?.effectiveLevel ?? 0,
+          hasIt: Boolean(rs),
+        };
+      }),
+    })),
+  };
+}
+
+// ── projects ──────────────────────────────────────────────────────────────
+
+export function getStudentProjects(studentId: Id) {
+  const d = ds();
+  return d.projects
+    .filter((p) => p.studentId === studentId)
+    .map((p) => ({
+      ...p,
+      skillNames: p.skillIds.map((sid) => d.skillById.get(sid)?.name ?? sid),
+      competencyNames: p.competencyClaims
+        .map((cid) => d.competencyById.get(cid)?.name)
+        .filter((x): x is string => Boolean(x)),
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export function getProject(studentId: Id, projectId: Id) {
+  return getStudentProjects(studentId).find((p) => p.id === projectId);
 }

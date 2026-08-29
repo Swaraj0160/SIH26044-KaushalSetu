@@ -1,232 +1,183 @@
 import Link from "next/link";
 
-import { CompetencyGraph } from "@/components/kaushal/competency-graph";
+import { JourneyStepper } from "@/components/kaushal/journey-stepper";
 import { OpportunityCard } from "@/components/kaushal/opportunity-card";
-import { PageHeader } from "@/components/kaushal/page-header";
 import { BandLabel } from "@/components/kaushal/primitives";
-import { ReadinessMeter } from "@/components/kaushal/readiness";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Stat } from "@/components/ui/misc";
-import {
-  closestRoles,
-  getCompetencyGraph,
-  getStudentDashboard,
-} from "@/lib/data";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { getStudentHome } from "@/lib/data";
 import { currentStudentId } from "@/lib/guards";
 
-export default async function StudentOverview() {
+const ACTIVITY_ICON: Record<string, string> = {
+  skill: "✓",
+  project: "■",
+  internship: "▲",
+  application: "◍",
+  certificate: "▤",
+  endorsement: "✦",
+};
+
+function timeAgo(iso: string): string {
+  if (iso === "just now") return iso;
+  const days = Math.round((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days} days ago`;
+  if (days < 30) return `${Math.round(days / 7)} weeks ago`;
+  return `${Math.round(days / 30)} months ago`;
+}
+
+export default async function StudentHome() {
   const sid = await currentStudentId();
-  const dash = getStudentDashboard(sid);
-  const graph = getCompetencyGraph(sid);
-  const targetFit = closestRoles(sid, 6).find(
-    (r) => r.role.id === dash.targetRole.id,
-  );
+  const home = getStudentHome(sid);
+  const nba = home.nextActions[0];
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={dash.student.name}
-        description={`${dash.student.programme} · ${dash.institutionName} · target role: ${dash.targetRole.title}`}
-        actions={<Badge variant="accent">Demo persona</Badge>}
-      />
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="pt-5">
-            <Stat
-              label="Career readiness"
-              value={dash.readiness.score}
-              hint={<BandLabel band={dash.readiness.band} />}
-            />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-5">
-            <Stat
-              label="Match to target"
-              value={`${targetFit?.match.score ?? "—"}%`}
-              hint={
-                targetFit ? <BandLabel band={targetFit.match.band} /> : null
-              }
-            />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-5">
-            <Stat
-              label="Evidence confidence"
-              value={`${dash.evidenceConfidencePct}%`}
-              hint="portfolio-wide"
-            />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-5">
-            <Stat
-              label="Biggest gap"
-              value={
-                dash.biggestGap ? dash.biggestGap.name.split(" ")[0] : "None"
-              }
-              hint={
-                dash.biggestGap
-                  ? `${dash.biggestGap.gap} levels to close`
-                  : "on track"
-              }
-            />
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Competency graph</CardTitle>
-            <Link
-              href="/student/skills"
-              className="text-primary text-xs hover:underline"
-            >
-              Skill graph & evidence →
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <CompetencyGraph data={graph} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Readiness for {dash.targetRole.title}</CardTitle>
-            <Link
-              href="/student/gaps"
-              className="text-primary text-xs hover:underline"
-            >
-              Gaps & roadmap →
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <ReadinessMeter readiness={dash.readiness} />
-          </CardContent>
-        </Card>
-      </div>
-
-      {dash.activeInternship ? (
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Active internship</CardTitle>
-            <Link
-              href="/student/internship"
-              className="text-primary text-xs hover:underline"
-            >
-              Open workspace →
-            </Link>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="text-sm">
-              <span className="font-medium">
-                {dash.activeInternship.roleTitle}
-              </span>{" "}
-              · {dash.activeInternship.employerName} · mentor{" "}
-              {dash.activeInternship.mentorName}
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <div className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
-                  Milestones
-                </div>
-                <ul className="space-y-1 text-sm">
-                  {dash.activeInternship.milestones.map((m) => (
-                    <li key={m.title} className="flex items-center gap-2">
-                      <span
-                        className={
-                          m.done ? "text-success" : "text-muted-foreground"
-                        }
-                      >
-                        {m.done ? "✓" : "○"}
-                      </span>
-                      {m.title}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <div className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
-                  Skill delta (in progress)
-                </div>
-                <ul className="space-y-1 text-sm">
-                  {dash.activeInternship.skillDelta.map((s) => (
-                    <li key={s.skillId} className="tabular">
-                      {s.skillId.replace("sk-", "")}: L{s.before} → L{s.after}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
+    <div className="space-y-8">
+      {/* 1 — greeting + goal */}
       <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Recommended for you</h2>
+        <h1 className="text-2xl font-semibold">
+          {greeting}, {home.firstName}.
+        </h1>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          <span className="text-muted-foreground">
+            Target:{" "}
+            <span className="text-foreground font-medium">
+              {home.targetRole.title}
+            </span>
+          </span>
+          <span className="text-muted-foreground">·</span>
+          <span className="text-muted-foreground">
+            Readiness{" "}
+            <span className="tabular text-foreground text-lg font-semibold">
+              {home.readiness.score}%
+            </span>
+          </span>
+          <BandLabel band={home.readiness.band} />
           <Link
-            href="/student/opportunities"
+            href="/student/career"
             className="text-primary text-xs hover:underline"
           >
-            All opportunities →
+            change goal →
           </Link>
-        </div>
-        <div className="grid gap-3">
-          {dash.recommended.slice(0, 3).map((r) => (
-            <OpportunityCard
-              key={r.opportunity.id}
-              item={r}
-              href={`/student/opportunities/${r.opportunity.id}`}
-            />
-          ))}
         </div>
       </div>
 
-      {dash.applications.length ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Your applications</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {dash.applications.map((a) => (
-                <div
-                  key={a.id}
-                  className="border-border flex items-center justify-between border-b py-2 text-sm last:border-0"
-                >
-                  <span>
-                    {a.opportunity.title.split(" — ")[0]} ·{" "}
-                    <span className="text-muted-foreground">
-                      {a.employerName}
+      {/* 2 — the journey */}
+      <section>
+        <h2 className="text-muted-foreground mb-3 text-sm font-semibold tracking-wide uppercase">
+          Your journey
+        </h2>
+        <JourneyStepper stages={home.journey} />
+      </section>
+
+      {/* 3 — next best action */}
+      {nba ? (
+        <section>
+          <h2 className="text-muted-foreground mb-3 text-sm font-semibold tracking-wide uppercase">
+            Your next best action
+          </h2>
+          <Card className="border-primary/30 bg-primary/[0.03]">
+            <CardContent className="flex flex-col gap-3 pt-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-base font-semibold">{nba.title}</div>
+                <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
+                  <span className="text-foreground font-medium">Why: </span>
+                  {nba.why}
+                </p>
+              </div>
+              <Button asChild className="shrink-0">
+                <Link href={nba.href}>{nba.ctaLabel}</Link>
+              </Button>
+            </CardContent>
+          </Card>
+          {home.nextActions.length > 1 ? (
+            <details className="mt-2 text-sm">
+              <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-xs">
+                {home.nextActions.length - 1} more suggested action
+                {home.nextActions.length > 2 ? "s" : ""}
+              </summary>
+              <ul className="mt-2 space-y-1.5">
+                {home.nextActions.slice(1).map((a) => (
+                  <li
+                    key={a.id}
+                    className="border-border flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+                  >
+                    <span>
+                      <span className="font-medium">{a.title}</span>
+                      <span className="text-muted-foreground ml-2 text-xs">
+                        {a.why}
+                      </span>
                     </span>
-                  </span>
-                  <span className="flex items-center gap-3">
-                    <span className="tabular text-muted-foreground">
-                      {a.matchAtApply}% at apply
-                    </span>
-                    <Badge variant="info" className="capitalize">
-                      {a.status.replace(/_/g, " ")}
-                    </Badge>
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                    <Link
+                      href={a.href}
+                      className="text-primary shrink-0 text-xs hover:underline"
+                    >
+                      {a.ctaLabel} →
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
+        </section>
+      ) : null}
+
+      {/* 4 — recent activity */}
+      {home.activity.length ? (
+        <section>
+          <h2 className="text-muted-foreground mb-3 text-sm font-semibold tracking-wide uppercase">
+            Recent activity
+          </h2>
+          <ul className="space-y-1.5">
+            {home.activity.map((a, i) => (
+              <li key={i} className="flex items-start gap-3 text-sm">
+                <span className="text-muted-foreground mt-0.5 w-4 shrink-0 text-center">
+                  {ACTIVITY_ICON[a.kind] ?? "·"}
+                </span>
+                <span className="flex-1">{a.label}</span>
+                <span className="text-muted-foreground shrink-0 text-xs">
+                  {timeAgo(a.when)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {/* 5 — a few opportunities */}
+      {home.recommended.length ? (
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
+              A few opportunities for you
+            </h2>
+            <Link
+              href="/student/opportunities"
+              className="text-primary text-xs hover:underline"
+            >
+              all opportunities →
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {home.recommended.map((r) => (
+              <OpportunityCard
+                key={r.opportunity.id}
+                item={r}
+                href={`/student/opportunities/${r.opportunity.id}`}
+              />
+            ))}
+          </div>
+        </section>
       ) : null}
 
       <p className="text-muted-foreground text-xs">
-        Every number here is produced by deterministic engines over synthetic
-        data. The{" "}
-        <Link href="/student/copilot" className="underline">
-          Career Copilot
-        </Link>{" "}
-        explains them; it does not compute them.
+        Every number is produced by deterministic engines over synthetic data —
+        no AI in the loop. Your next action is chosen by leverage, not at
+        random.
       </p>
     </div>
   );

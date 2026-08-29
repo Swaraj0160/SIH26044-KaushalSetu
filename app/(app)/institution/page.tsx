@@ -18,7 +18,7 @@ export default async function InstitutionCommandCenter() {
     <div className="space-y-6">
       <PageHeader
         title="Command Center"
-        description={`${ov.institutionName} · competency intelligence for placement and curriculum planning`}
+        description={`${ov.institutionName} — your job here: understand workforce readiness and act on the systemic gaps.`}
         actions={<Badge variant="accent">Demo persona · {persona.name}</Badge>}
       />
 

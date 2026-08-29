@@ -221,7 +221,10 @@ export const rolesCatalog = pgTable("roles_catalog", {
   title: text("title").notNull(),
   family: text("family").notNull(),
   summary: text("summary").notNull().default(""),
-  tools: jsonb("tools").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  tools: jsonb("tools")
+    .$type<string[]>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
   behavioural: jsonb("behavioural")
     .$type<string[]>()
     .notNull()
@@ -268,7 +271,10 @@ export const learningResources = pgTable("learning_resources", {
   hours: smallint("hours").notNull().default(0),
   url: text("url"),
   free: boolean("free").notNull().default(true),
-  skillIds: jsonb("skill_ids").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  skillIds: jsonb("skill_ids")
+    .$type<string[]>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
 });
 
 // ── people ─────────────────────────────────────────────────────────────────
@@ -320,7 +326,10 @@ export const faculty = pgTable(
       .notNull()
       .references(() => departments.id),
     designation: text("designation").notNull(),
-    expertise: jsonb("expertise").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    expertise: jsonb("expertise")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
   },
   (t) => [index("faculty_inst_idx").on(t.institutionId)],
 );
@@ -387,7 +396,10 @@ export const projects = pgTable(
     url: text("url"),
     date: timestamp("date", { withTimezone: true }).notNull().defaultNow(),
     facultyVerifiedBy: text("faculty_verified_by"),
-    skillIds: jsonb("skill_ids").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    skillIds: jsonb("skill_ids")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
   },
   (t) => [index("projects_student_idx").on(t.studentId)],
 );
@@ -403,7 +415,10 @@ export const certifications = pgTable(
     issuer: text("issuer").notNull(),
     date: timestamp("date", { withTimezone: true }).notNull().defaultNow(),
     credentialUrl: text("credential_url"),
-    skillIds: jsonb("skill_ids").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    skillIds: jsonb("skill_ids")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
   },
   (t) => [index("certifications_student_idx").on(t.studentId)],
 );
@@ -420,8 +435,13 @@ export const assessmentResults = pgTable(
       .references(() => skills.id),
     score: smallint("score").notNull(),
     level: level("level").notNull(),
-    weakAreas: jsonb("weak_areas").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
-    adaptivePath: jsonb("adaptive_path").notNull().default(sql`'[]'::jsonb`),
+    weakAreas: jsonb("weak_areas")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    adaptivePath: jsonb("adaptive_path")
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     takenAt: createdAt(),
   },
   (t) => [index("assessment_results_student_idx").on(t.studentId)],
@@ -524,10 +544,19 @@ export const internships = pgTable(
     status: internshipStatusEnum("status").notNull().default("active"),
     startDate: timestamp("start_date", { withTimezone: true }).notNull(),
     endDate: timestamp("end_date", { withTimezone: true }).notNull(),
-    objectives: jsonb("objectives").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
-    milestones: jsonb("milestones").notNull().default(sql`'[]'::jsonb`),
-    weeklyLogs: jsonb("weekly_logs").notNull().default(sql`'[]'::jsonb`),
-    skillDelta: jsonb("skill_delta").notNull().default(sql`'[]'::jsonb`),
+    objectives: jsonb("objectives")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    milestones: jsonb("milestones")
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    weeklyLogs: jsonb("weekly_logs")
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    skillDelta: jsonb("skill_delta")
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     finalEvaluation: jsonb("final_evaluation"),
   },
   (t) => [index("internships_student_idx").on(t.studentId)],
@@ -655,14 +684,17 @@ export const studentRelations = relations(students, ({ one, many }) => ({
   applications: many(applications),
 }));
 
-export const opportunityRelations = relations(opportunities, ({ one, many }) => ({
-  employer: one(employers, {
-    fields: [opportunities.employerId],
-    references: [employers.id],
+export const opportunityRelations = relations(
+  opportunities,
+  ({ one, many }) => ({
+    employer: one(employers, {
+      fields: [opportunities.employerId],
+      references: [employers.id],
+    }),
+    role: one(rolesCatalog, {
+      fields: [opportunities.roleId],
+      references: [rolesCatalog.id],
+    }),
+    applications: many(applications),
   }),
-  role: one(rolesCatalog, {
-    fields: [opportunities.roleId],
-    references: [rolesCatalog.id],
-  }),
-  applications: many(applications),
-}));
+);

@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 
-import { getPersona, homePathFor, type Persona } from "@/lib/session";
+import { homePathFor, type Persona } from "@/lib/auth/personas";
+import { getPersona } from "@/lib/auth/session";
 import type { Role } from "@/lib/domain/types";
 
-/** Require a persona with one of the given roles, else bounce to their own home. */
+/** Require a signed-in session with one of the given roles. */
 export async function requireRole(...roles: Role[]): Promise<Persona> {
   const persona = await getPersona();
-  if (!persona) redirect("/demo");
+  if (!persona) redirect("/login");
   if (!roles.includes(persona.role)) redirect(homePathFor(persona.role));
   return persona;
 }

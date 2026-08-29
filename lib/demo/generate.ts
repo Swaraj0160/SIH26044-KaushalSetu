@@ -491,12 +491,13 @@ export function generate(): DemoData {
   const certifications: Certification[] = [];
 
   const pushStudent = (
-    s: Student,
-    ps: Project[] = [],
+    s: Omit<Student, "education">,
+    ps: Partial<Project>[] = [],
     cs: Certification[] = [],
   ) => {
-    students.push(s);
-    projects.push(...ps);
+    const full = { ...s, education: buildEducation(s, rng) } as Student;
+    students.push(full);
+    projects.push(...ps.map((p) => normalizeProject(p, full, rng)));
     certifications.push(...cs);
   };
 
@@ -644,7 +645,7 @@ export function generate(): DemoData {
     const sSkills = buildStudentSkills(rng, target, strength, isAyush);
 
     const id = `stu-${i}`;
-    const stuProjects: Project[] = [];
+    const stuProjects: Partial<Project>[] = [];
     const projCount = rng.int(0, 3);
     for (let p = 0; p < projCount; p++) {
       const sids = rng.sample(
@@ -1466,7 +1467,7 @@ export function checkCode(id: string): string {
 
 // ── hero personas ─────────────────────────────────────────────────────────
 
-function heroAarav(): Student {
+function heroAarav(): Omit<Student, "education"> {
   const ev = (
     skillId: Id,
     selfRating: ProficiencyLevel,
@@ -1550,7 +1551,7 @@ function heroAarav(): Student {
   };
 }
 
-function heroAnanya(): Student {
+function heroAnanya(): Omit<Student, "education"> {
   const mk = (
     skillId: Id,
     selfRating: ProficiencyLevel,
@@ -1620,5 +1621,252 @@ function heroAnanya(): Student {
       },
     ],
     demo: true,
+  };
+}
+
+// ── education & project normalisers ────────────────────────────────────────
+
+const COURSE_CATALOG: Record<
+  string,
+  Array<{ code: string; title: string; skills: string[] }>
+> = {
+  engineering: [
+    {
+      code: "CS201",
+      title: "Data Structures & Algorithms",
+      skills: ["sk-problem-solving", "sk-git"],
+    },
+    {
+      code: "CS204",
+      title: "Database Management Systems",
+      skills: ["sk-sql", "sk-db-design"],
+    },
+    {
+      code: "CS210",
+      title: "Operating Systems",
+      skills: ["sk-problem-solving"],
+    },
+    {
+      code: "CS305",
+      title: "Machine Learning",
+      skills: ["sk-ml", "sk-python-data", "sk-stats"],
+    },
+    {
+      code: "CS308",
+      title: "Statistics & Probability",
+      skills: ["sk-stats", "sk-experiment"],
+    },
+    {
+      code: "CS312",
+      title: "Web Systems Engineering",
+      skills: ["sk-react", "sk-js", "sk-api"],
+    },
+    {
+      code: "CS320",
+      title: "Cloud & DevOps",
+      skills: ["sk-docker", "sk-cloud", "sk-cicd"],
+    },
+    {
+      code: "HS101",
+      title: "Technical Communication",
+      skills: ["sk-comm", "sk-domain-writing"],
+    },
+  ],
+  university: [
+    {
+      code: "ST201",
+      title: "Applied Statistics",
+      skills: ["sk-stats", "sk-experiment"],
+    },
+    {
+      code: "ST210",
+      title: "Data Analysis with Python",
+      skills: ["sk-python-data", "sk-sql"],
+    },
+    {
+      code: "ST305",
+      title: "Predictive Modelling",
+      skills: ["sk-ml", "sk-featureeng"],
+    },
+    {
+      code: "BM220",
+      title: "Market & Competitive Analysis",
+      skills: ["sk-market-analysis"],
+    },
+    { code: "HS110", title: "Business Communication", skills: ["sk-comm"] },
+  ],
+  polytechnic: [
+    {
+      code: "DP101",
+      title: "Programming Fundamentals",
+      skills: ["sk-js", "sk-git"],
+    },
+    { code: "DP110", title: "Database Basics", skills: ["sk-sql"] },
+    { code: "DP205", title: "Software Testing", skills: ["sk-testing"] },
+  ],
+  ayush: [
+    {
+      code: "AY201",
+      title: "Rasashastra & Bhaishajya Kalpana",
+      skills: ["sk-ayur-pharma"],
+    },
+    {
+      code: "AY205",
+      title: "Dravyaguna Vigyan",
+      skills: ["sk-dravyaguna", "sk-herbal-id"],
+    },
+    {
+      code: "AY210",
+      title: "Roga Nidana (Clinical Assessment)",
+      skills: ["sk-ayur-diag"],
+    },
+    {
+      code: "AY305",
+      title: "Pharmaceutical Quality & GMP",
+      skills: ["sk-gmp", "sk-qc-lab"],
+    },
+    {
+      code: "AY308",
+      title: "AYUSH Regulatory Framework",
+      skills: ["sk-reg-ayush"],
+    },
+    {
+      code: "AY312",
+      title: "Research Methodology & Biostatistics",
+      skills: ["sk-clin-research", "sk-lit-review", "sk-stats"],
+    },
+    { code: "AY210b", title: "Panchakarma", skills: ["sk-panchakarma"] },
+    {
+      code: "HS120",
+      title: "Scientific & Technical Writing",
+      skills: ["sk-domain-writing", "sk-comm"],
+    },
+  ],
+};
+
+const GRADES = ["O", "A+", "A", "A", "B+", "B"] as const;
+
+function buildEducation(
+  s: Omit<import("@/lib/domain/types").Student, "education">,
+  rng: Rng,
+): import("@/lib/domain/types").EducationRecord {
+  const instType =
+    s.institutionId.includes("aiia") ||
+    s.institutionId.includes("bhu") ||
+    s.institutionId.includes("gtu")
+      ? "ayush"
+      : s.institutionId.includes("coep") || s.institutionId.includes("vit")
+        ? "engineering"
+        : s.institutionId.includes("poly")
+          ? "polytechnic"
+          : "university";
+  const catalog = COURSE_CATALOG[instType] ?? COURSE_CATALOG.university;
+  const studentSkillIds = new Set(s.skills.map((x) => x.skillId));
+  // prefer courses that produced skills the student actually has, then fill
+  const ordered = [...catalog].sort((a, b) => {
+    const av = a.skills.filter((x) => studentSkillIds.has(x)).length;
+    const bv = b.skills.filter((x) => studentSkillIds.has(x)).length;
+    return bv - av;
+  });
+  const n = Math.min(ordered.length, rng.int(5, 7));
+  const startYear = s.graduationYear - 4;
+  const courses = ordered.slice(0, n).map((c, i) => ({
+    code: c.code,
+    title: c.title,
+    credits: rng.pick([3, 3, 4, 4]),
+    term: `Sem ${Math.min(8, 2 + i)} · ${startYear + Math.floor((2 + i) / 2)}`,
+    grade: rng.pick(GRADES),
+    skillIds: c.skills,
+  }));
+  const degreeName =
+    instType === "ayush"
+      ? s.programme.includes("MD")
+        ? "MD (Ayurveda) — Rasashastra"
+        : s.programme.includes("Pharm")
+          ? "B.Pharm (Ayurveda)"
+          : "BAMS — Bachelor of Ayurvedic Medicine & Surgery"
+      : s.programme.replace("B.Tech ", "B.Tech — ");
+  return {
+    degree: degreeName,
+    institution: "", // filled by the data layer from institutionId
+    department: "",
+    currentSemester: s.semester,
+    academicYear: `${startYear + Math.floor(s.semester / 2)}–${(startYear + Math.floor(s.semester / 2) + 1) % 100}`,
+    cgpa: s.cgpa,
+    startYear,
+    courses,
+  };
+}
+
+function normalizeProject(
+  p: Partial<Project>,
+  student: import("@/lib/domain/types").Student,
+  rng: Rng,
+): Project {
+  const skillIds = p.skillIds ?? [];
+  return {
+    id: p.id ?? `proj-${student.id}-${rng.int(1000, 9999)}`,
+    studentId: p.studentId ?? student.id,
+    title: p.title ?? "Untitled project",
+    type:
+      p.type ??
+      rng.pick<Project["type"]>([
+        "mini",
+        "mini",
+        "academic",
+        "personal",
+        "major",
+      ]),
+    status:
+      p.status ??
+      (p.facultyVerifiedBy
+        ? "evaluated"
+        : rng.pick<Project["status"]>([
+            "submitted",
+            "evaluated",
+            "in_progress",
+          ])),
+    summary: p.summary ?? "",
+    contribution:
+      p.contribution ??
+      rng.pick([
+        "Sole contributor",
+        "Lead + implementation",
+        "Modelling + evaluation",
+        "Backend + data",
+      ]),
+    team:
+      p.team ??
+      (rng.chance(0.55) ? [] : [`${rng.pick(FIRST)} ${rng.pick(LAST)}`]),
+    tech: p.tech ?? skillIds.slice(0, 3).map((s) => s.replace("sk-", "")),
+    skillIds,
+    competencyClaims: p.competencyClaims ?? [],
+    links:
+      p.links ??
+      (p.url
+        ? { repo: p.url }
+        : rng.chance(0.5)
+          ? {
+              repo: `https://github.com/demo/${(p.id ?? "project").replace(/[^a-z0-9]/gi, "-")}`,
+            }
+          : {}),
+    period: p.period ?? p.date?.slice(0, 7) ?? "",
+    date: p.date ?? isoDaysAgo(rng.int(30, 300)),
+    courseCode: p.courseCode,
+    internshipId: p.internshipId,
+    evaluations:
+      p.evaluations ??
+      (p.facultyVerifiedBy
+        ? [
+            {
+              by: p.facultyVerifiedBy,
+              role: "faculty" as const,
+              verdict: rng.pick(["Excellent", "Strong", "Good"]),
+              score: rng.int(78, 96),
+              date: p.date ?? isoDaysAgo(rng.int(20, 200)),
+            },
+          ]
+        : []),
+    facultyVerifiedBy: p.facultyVerifiedBy,
   };
 }

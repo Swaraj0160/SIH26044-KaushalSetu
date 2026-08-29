@@ -1,67 +1,113 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { exitDemo } from "@/app/actions";
+import { signOut } from "@/app/actions";
 import { Logo } from "@/components/kaushal/logo";
-import { SideNav, type NavItem } from "@/components/kaushal/nav";
+import { GroupedNav, type NavGroup } from "@/components/kaushal/nav";
 import { DemoBanner } from "@/components/kaushal/primitives";
 import { Badge } from "@/components/ui/badge";
-import type { Persona } from "@/lib/session";
+import type { Persona } from "@/lib/auth/personas";
 
-const NAV: Record<Persona["role"], NavItem[]> = {
+const NAV: Record<Persona["role"], NavGroup[]> = {
   student: [
-    { href: "/student", label: "Overview", icon: "◆" },
-    { href: "/student/passport", label: "Competency Passport", icon: "▣" },
-    { href: "/student/skills", label: "Skill Graph & Evidence", icon: "✦" },
-    { href: "/student/assessment", label: "Skill Assessment", icon: "✎" },
-    { href: "/student/gaps", label: "Skill Gaps & Roadmap", icon: "△" },
-    { href: "/student/simulator", label: "Career Simulator", icon: "⇄" },
-    { href: "/student/opportunities", label: "Opportunities", icon: "◎" },
-    { href: "/student/applications", label: "Applications", icon: "≡" },
-    { href: "/student/internship", label: "Internship Workspace", icon: "⌘" },
-    { href: "/student/copilot", label: "Career Copilot", icon: "✺" },
+    { label: null, items: [{ href: "/student", label: "Home", icon: "◆" }] },
+    {
+      label: "My Journey",
+      items: [
+        { href: "/student/education", label: "Education", icon: "▤" },
+        { href: "/student/skills", label: "Skills & Evidence", icon: "✦" },
+        { href: "/student/projects", label: "Projects", icon: "■" },
+        { href: "/student/internship", label: "Internship", icon: "▲" },
+      ],
+    },
+    {
+      label: "Career",
+      items: [
+        { href: "/student/career", label: "Goal & Readiness", icon: "◎" },
+        { href: "/student/gaps", label: "Skill Gaps & Roadmap", icon: "△" },
+        { href: "/student/simulator", label: "Explore Roles", icon: "⇄" },
+        { href: "/student/opportunities", label: "Opportunities", icon: "◍" },
+        { href: "/student/applications", label: "Applications", icon: "≡" },
+      ],
+    },
+    {
+      label: "My Profile",
+      items: [
+        { href: "/student/profile", label: "Competency Profile", icon: "✺" },
+        { href: "/student/passport", label: "Passport", icon: "▣" },
+      ],
+    },
   ],
   recruiter: [
-    { href: "/recruiter", label: "Overview", icon: "◆" },
-    { href: "/recruiter/opportunities", label: "Opportunities", icon: "◎" },
-    { href: "/recruiter/talent", label: "Talent Search", icon: "⚲" },
-    { href: "/demand", label: "Skill-Demand Intelligence", icon: "📈" },
+    { label: null, items: [{ href: "/industry", label: "Home", icon: "◆" }] },
+    {
+      label: "Hiring",
+      items: [
+        {
+          href: "/recruiter/opportunities",
+          label: "Roles & Candidates",
+          icon: "◍",
+        },
+        { href: "/recruiter/talent", label: "Talent Search", icon: "⚲" },
+      ],
+    },
+    {
+      label: "Market",
+      items: [{ href: "/demand", label: "Skill-Demand Signals", icon: "📈" }],
+    },
   ],
   faculty: [
-    { href: "/faculty", label: "Overview", icon: "◆" },
-    { href: "/faculty/collaborations", label: "Collaborations", icon: "⇌" },
+    { label: null, items: [{ href: "/faculty", label: "Home", icon: "◆" }] },
     {
-      href: "/faculty/verification",
-      label: "Evidence Verification",
-      icon: "✓",
+      label: "Develop & Connect",
+      items: [
+        { href: "/faculty/verification", label: "Verify Evidence", icon: "✓" },
+        { href: "/faculty/collaborations", label: "Collaborations", icon: "⇌" },
+      ],
     },
   ],
   institution_admin: [
-    { href: "/institution", label: "Command Center", icon: "◆" },
-    { href: "/institution/heatmap", label: "Skill Heatmap", icon: "▦" },
-    { href: "/institution/students", label: "Students", icon: "≡" },
     {
-      href: "/institution/placements",
-      label: "Placement Intelligence",
-      icon: "◷",
+      label: null,
+      items: [{ href: "/institution", label: "Command Center", icon: "◆" }],
     },
-    { href: "/demand", label: "Industry Demand", icon: "📈" },
+    {
+      label: "Understand & Improve",
+      items: [
+        { href: "/institution/heatmap", label: "Skill Heatmap", icon: "▦" },
+        { href: "/institution/students", label: "Cohorts", icon: "≡" },
+        {
+          href: "/institution/placements",
+          label: "Placement Intelligence",
+          icon: "◷",
+        },
+        { href: "/demand", label: "Industry Demand", icon: "📈" },
+      ],
+    },
   ],
   super_admin: [
-    { href: "/admin", label: "Overview", icon: "◆" },
-    { href: "/admin/taxonomy", label: "Skill & Role Taxonomy", icon: "▤" },
-    { href: "/admin/employers", label: "Employer Verification", icon: "✓" },
-    { href: "/admin/matching", label: "Matching Config", icon: "⚙" },
-    { href: "/admin/audit", label: "Audit Log", icon: "❋" },
+    { label: null, items: [{ href: "/admin", label: "Overview", icon: "◆" }] },
+    {
+      label: "Govern",
+      items: [
+        { href: "/admin/taxonomy", label: "Skill & Role Taxonomy", icon: "▤" },
+        { href: "/admin/employers", label: "Employer Verification", icon: "✓" },
+        { href: "/admin/matching", label: "Matching Config", icon: "⚙" },
+        { href: "/admin/audit", label: "Audit Log", icon: "❋" },
+      ],
+    },
   ],
 };
 
-const ROLE_LABEL: Record<Persona["role"], string> = {
-  student: "Student",
-  recruiter: "Industry / Recruiter",
-  faculty: "Faculty",
-  institution_admin: "Institution",
-  super_admin: "Administrator",
+const ROLE: Record<Persona["role"], { label: string; job: string }> = {
+  student: { label: "Student", job: "Build my career" },
+  recruiter: { label: "Industry", job: "Find & develop talent" },
+  faculty: { label: "Faculty", job: "Verify & connect" },
+  institution_admin: {
+    label: "Institution",
+    job: "Understand & improve readiness",
+  },
+  super_admin: { label: "Administrator", job: "Govern the ecosystem" },
 };
 
 export function AppShell({
@@ -71,7 +117,9 @@ export function AppShell({
   persona: Persona;
   children: ReactNode;
 }) {
-  const items = NAV[persona.role];
+  const groups = NAV[persona.role];
+  const role = ROLE[persona.role];
+
   return (
     <div className="flex min-h-screen flex-col">
       <DemoBanner />
@@ -80,27 +128,32 @@ export function AppShell({
           <Link href="/" className="mb-4 flex items-center px-1.5 py-1">
             <Logo />
           </Link>
-          <div className="border-border bg-card mb-3 rounded-lg border p-2.5">
+          <div className="border-border bg-card mb-4 rounded-lg border p-2.5">
             <div className="text-muted-foreground text-xs">Signed in as</div>
             <div className="text-sm font-medium">{persona.name}</div>
             <div className="text-muted-foreground mt-0.5 text-xs">
               {persona.subtitle}
             </div>
-            <Badge variant="subtle" className="mt-1.5">
-              {ROLE_LABEL[persona.role]}
-            </Badge>
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <Badge variant="subtle">{role.label}</Badge>
+              <span className="text-muted-foreground text-[0.7rem]">
+                · {role.job}
+              </span>
+            </div>
           </div>
-          <SideNav items={items} />
-          <div className="mt-auto space-y-1 pt-3">
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <GroupedNav groups={groups} />
+          </div>
+          <div className="space-y-1 pt-3">
             <Link
               href="/demo"
               className="text-muted-foreground hover:bg-muted hover:text-foreground block rounded-md px-2.5 py-1.5 text-xs"
             >
-              ⟲ Switch persona
+              ⟲ Switch role
             </Link>
-            <form action={exitDemo}>
+            <form action={signOut}>
               <button className="text-muted-foreground hover:bg-muted hover:text-foreground w-full rounded-md px-2.5 py-1.5 text-left text-xs">
-                ⤶ Exit judge demo
+                ⤶ Sign out
               </button>
             </form>
           </div>
@@ -112,12 +165,10 @@ export function AppShell({
               <Link href="/">
                 <Logo showText={false} />
               </Link>
-              <span className="text-sm font-medium">
-                {ROLE_LABEL[persona.role]}
-              </span>
+              <span className="text-sm font-medium">{role.label}</span>
             </div>
             <div className="text-muted-foreground hidden text-sm md:block">
-              KaushalSetu · {ROLE_LABEL[persona.role]} workspace
+              KaushalSetu · {role.label} — {role.job.toLowerCase()}
             </div>
             <div className="flex items-center gap-2">
               <Link
@@ -139,6 +190,35 @@ export function AppShell({
           </main>
         </div>
       </div>
+
+      {/* mobile bottom nav */}
+      <MobileNav role={persona.role} />
     </div>
+  );
+}
+
+function MobileNav({ role }: { role: Persona["role"] }) {
+  const items =
+    role === "student"
+      ? [
+          { href: "/student", label: "Home", icon: "◆" },
+          { href: "/student/education", label: "Journey", icon: "▤" },
+          { href: "/student/career", label: "Career", icon: "◎" },
+          { href: "/student/profile", label: "Profile", icon: "✺" },
+        ]
+      : NAV[role].flatMap((g) => g.items).slice(0, 4);
+  return (
+    <nav className="border-border bg-background/95 fixed inset-x-0 bottom-0 z-20 flex border-t backdrop-blur md:hidden">
+      {items.map((it) => (
+        <Link
+          key={it.href}
+          href={it.href}
+          className="text-muted-foreground flex flex-1 flex-col items-center gap-0.5 py-2 text-[0.65rem]"
+        >
+          <span className="text-sm">{it.icon}</span>
+          {it.label}
+        </Link>
+      ))}
+    </nav>
   );
 }

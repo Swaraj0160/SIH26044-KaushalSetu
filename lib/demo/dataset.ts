@@ -48,6 +48,15 @@ let cache: Dataset | null = null;
 export function getDataset(): Dataset {
   if (cache) return cache;
   const data = generate();
+
+  // Fill education.institution / department (generator only knows ids).
+  const instName = new Map(data.institutions.map((i) => [i.id, i.name]));
+  const deptName = new Map(data.departments.map((d) => [d.id, d.name]));
+  for (const s of data.students) {
+    s.education.institution = instName.get(s.institutionId) ?? "—";
+    s.education.department = deptName.get(s.departmentId) ?? "—";
+  }
+
   cache = {
     ...data,
     skills,
