@@ -68,10 +68,18 @@ export default function JudgePage() {
 
       <div className="mx-auto max-w-4xl px-4 pb-20">
         <div className="py-10">
-          <h1 className="text-3xl font-semibold">Technical showcase</h1>
+          <h1 className="text-3xl font-semibold">Judge mode</h1>
           <p className="text-muted-foreground mt-3 max-w-2xl">
-            KaushalSetu is an evidence-based competency-intelligence layer for
-            academia–industry collaboration. This page is the engineering view.
+            The 5-minute walkthrough below links straight into the live product,
+            then the engineering view. Sign in as a demo role from{" "}
+            <Link href="/login" className="text-primary underline">
+              /login
+            </Link>{" "}
+            or the{" "}
+            <Link href="/demo" className="text-primary underline">
+              persona picker
+            </Link>
+            .
           </p>
           <p className="border-primary/30 bg-primary/5 mt-4 rounded-lg border p-3 text-sm">
             <strong className="text-foreground">One sentence:</strong> LinkedIn
@@ -81,6 +89,90 @@ export default function JudgePage() {
             will need next.
           </p>
         </div>
+
+        <Section id="walkthrough" title="The 5-minute walkthrough">
+          <p className="mb-3">
+            One continuous story:{" "}
+            <span className="text-foreground">
+              education → skills → evidence → competency → career → gap → next
+              action → opportunity → recruiter → internship → verified
+              competency → institution intelligence
+            </span>
+            .
+          </p>
+          <ol className="space-y-2">
+            {[
+              [
+                "0:00 · Problem",
+                "Students hold qualifications; nobody has a continuous, evidence-backed view of employability.",
+                "/judge#problem",
+              ],
+              [
+                "0:30 · Student",
+                "Sign in as Aarav → the Home screen: goal, the 7-stage journey ('you are here'), one Next Best Action.",
+                "/student",
+              ],
+              [
+                "1:00 · Education → Skills",
+                "Courses map to the skills they produced; skills carry an assessed level.",
+                "/student/education",
+              ],
+              [
+                "1:30 · Evidence",
+                "Why a skill is trusted: self-declared → assessment → project → faculty → industry. Low-evidence skills are visibly discounted.",
+                "/student/skills",
+              ],
+              [
+                "2:00 · Career + gap + action",
+                "Deterministic readiness, ranked gaps, the sequenced plan, and 'which role am I closest to'.",
+                "/student/career?tab=readiness",
+              ],
+              [
+                "2:30 · Explainable opportunity match",
+                "Open a posting → the per-factor breakdown and a 'how to become ready' list.",
+                "/student/opportunities/opp-hero-ml",
+              ],
+              [
+                "3:00 · Recruiter",
+                "Switch to Rohan → the same match from the hiring side, reconciled to the same number, with 'explain A vs B'.",
+                "/recruiter/opportunities/opp-hero-ml",
+              ],
+              [
+                "3:30 · Internship loop",
+                "Experience → mentor evaluation → verified skill delta → Competency Passport update.",
+                "/student/internship",
+              ],
+              [
+                "4:00 · Institution intelligence",
+                "Switch to Dr. S. Rao → department readiness, and the skill heatmap drilling to named students + an action.",
+                "/institution/heatmap",
+              ],
+              [
+                "4:45 · Passport & verification",
+                "The culmination — everything proven, with a public QR check.",
+                "/verify/KS-PASSPORT-AARAV",
+              ],
+            ].map(([t, desc, href]) => (
+              <li key={t} className="border-border rounded-lg border p-3">
+                <Link
+                  href={href}
+                  className="text-foreground font-medium hover:underline"
+                >
+                  {t} →
+                </Link>
+                <p className="mt-0.5 text-xs">{desc}</p>
+              </li>
+            ))}
+          </ol>
+          <p className="bg-muted/60 mt-3 rounded-md p-2 text-xs">
+            Close:{" "}
+            <span className="text-foreground">
+              KaushalSetu doesn&apos;t just match students to opportunities — it
+              continuously connects education, evidence, skills, experience and
+              industry demand.
+            </span>
+          </p>
+        </Section>
 
         <Section id="problem" title="Problem">
           <p>
