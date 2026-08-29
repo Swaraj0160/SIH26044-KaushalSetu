@@ -15,6 +15,7 @@ const ACTIVITY_ICON: Record<string, string> = {
   application: "◍",
   certificate: "▤",
   endorsement: "✦",
+  achievement: "★",
 };
 
 function timeAgo(iso: string): string {
@@ -156,7 +157,7 @@ export default async function StudentHome() {
               A few opportunities for you
             </h2>
             <Link
-              href="/student/opportunities"
+              href="/student/career?tab=opportunities"
               className="text-primary text-xs hover:underline"
             >
               all opportunities →

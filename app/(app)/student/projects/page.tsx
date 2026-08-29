@@ -38,7 +38,10 @@ export default async function ProjectsPage() {
           <CardContent className="text-muted-foreground py-10 text-center text-sm">
             No projects yet. A guided project is often the fastest way to close
             a gap and produce verifiable evidence — see{" "}
-            <Link href="/student/gaps" className="text-primary underline">
+            <Link
+              href="/student/career?tab=gaps"
+              className="text-primary underline"
+            >
               Skill Gaps &amp; Roadmap
             </Link>
             .

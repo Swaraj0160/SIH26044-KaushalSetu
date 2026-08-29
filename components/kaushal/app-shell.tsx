@@ -2,6 +2,10 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { signOut } from "@/app/actions";
+import {
+  CommandPalette,
+  type CommandItem,
+} from "@/components/kaushal/command-palette";
 import { Logo } from "@/components/kaushal/logo";
 import { GroupedNav, type NavGroup } from "@/components/kaushal/nav";
 import { DemoBanner } from "@/components/kaushal/primitives";
@@ -18,16 +22,15 @@ const NAV: Record<Persona["role"], NavGroup[]> = {
         { href: "/student/skills", label: "Skills & Evidence", icon: "✦" },
         { href: "/student/projects", label: "Projects", icon: "■" },
         { href: "/student/internship", label: "Internship", icon: "▲" },
+        { href: "/student/certifications", label: "Certifications", icon: "❖" },
+        { href: "/student/achievements", label: "Achievements", icon: "★" },
       ],
     },
     {
       label: "Career",
       items: [
-        { href: "/student/career", label: "Goal & Readiness", icon: "◎" },
-        { href: "/student/gaps", label: "Skill Gaps & Roadmap", icon: "△" },
-        { href: "/student/simulator", label: "Explore Roles", icon: "⇄" },
-        { href: "/student/opportunities", label: "Opportunities", icon: "◍" },
-        { href: "/student/applications", label: "Applications", icon: "≡" },
+        { href: "/student/career", label: "Career", icon: "◎" },
+        { href: "/student/copilot", label: "Career Copilot", icon: "✺" },
       ],
     },
     {
@@ -110,6 +113,46 @@ const ROLE: Record<Persona["role"], { label: string; job: string }> = {
   super_admin: { label: "Administrator", job: "Govern the ecosystem" },
 };
 
+const QUICK_ACTIONS: Partial<Record<Persona["role"], CommandItem[]>> = {
+  student: [
+    {
+      label: "Take a skill assessment",
+      group: "Action",
+      href: "/student/assessment",
+      keywords: "test quiz",
+    },
+    {
+      label: "Set / change career goal",
+      group: "Action",
+      href: "/student/career",
+      keywords: "target role",
+    },
+    {
+      label: "Ask the Career Copilot",
+      group: "Action",
+      href: "/student/copilot",
+      keywords: "ai chat help",
+    },
+    {
+      label: "View my Passport",
+      group: "Action",
+      href: "/student/passport",
+      keywords: "verify qr share",
+    },
+  ],
+};
+
+function commandItems(role: Persona["role"]): CommandItem[] {
+  const nav = NAV[role].flatMap((g) =>
+    g.items.map((it) => ({
+      label: it.label,
+      group: g.label ?? "Navigate",
+      href: it.href,
+    })),
+  );
+  return [...nav, ...(QUICK_ACTIONS[role] ?? [])];
+}
+
 export function AppShell({
   persona,
   children,
@@ -121,14 +164,14 @@ export function AppShell({
   const role = ROLE[persona.role];
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="app-canvas flex min-h-screen flex-col">
       <DemoBanner />
       <div className="flex flex-1">
-        <aside className="border-border bg-card/50 sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r p-3 md:flex">
+        <aside className="border-border bg-card/70 sticky top-0 hidden h-screen w-[15rem] shrink-0 flex-col border-r p-3 backdrop-blur md:flex">
           <Link href="/" className="mb-4 flex items-center px-1.5 py-1">
             <Logo />
           </Link>
-          <div className="border-border bg-card mb-4 rounded-lg border p-2.5">
+          <div className="border-border bg-card elev-1 mb-4 rounded-lg border p-2.5">
             <div className="text-muted-foreground text-xs">Signed in as</div>
             <div className="text-sm font-medium">{persona.name}</div>
             <div className="text-muted-foreground mt-0.5 text-xs">
@@ -141,10 +184,10 @@ export function AppShell({
               </span>
             </div>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto pr-0.5">
             <GroupedNav groups={groups} />
           </div>
-          <div className="space-y-1 pt-3">
+          <div className="border-border space-y-1 border-t pt-3">
             <Link
               href="/demo"
               className="text-muted-foreground hover:bg-muted hover:text-foreground block rounded-md px-2.5 py-1.5 text-xs"
@@ -160,7 +203,7 @@ export function AppShell({
         </aside>
 
         <div className="min-w-0 flex-1">
-          <header className="border-border bg-background/85 sticky top-0 z-10 flex items-center justify-between gap-3 border-b px-4 py-2.5 backdrop-blur md:px-8">
+          <header className="border-border bg-background/80 sticky top-0 z-10 flex items-center justify-between gap-3 border-b px-4 py-2.5 backdrop-blur md:px-8">
             <div className="flex items-center gap-3 md:hidden">
               <Link href="/">
                 <Logo showText={false} />
@@ -171,27 +214,21 @@ export function AppShell({
               KaushalSetu · {role.label} — {role.job.toLowerCase()}
             </div>
             <div className="flex items-center gap-2">
+              <CommandPalette items={commandItems(persona.role)} />
               <Link
                 href="/judge"
                 className="border-border hover:bg-muted rounded-md border px-2.5 py-1 text-xs"
               >
                 Judge mode
               </Link>
-              <Link
-                href="/demo"
-                className="border-border hover:bg-muted rounded-md border px-2.5 py-1 text-xs md:hidden"
-              >
-                Switch
-              </Link>
             </div>
           </header>
-          <main className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
-            {children}
+          <main className="mx-auto max-w-6xl px-4 pt-6 pb-20 md:px-8 md:pt-8 md:pb-10">
+            <div className="rise">{children}</div>
           </main>
         </div>
       </div>
 
-      {/* mobile bottom nav */}
       <MobileNav role={persona.role} />
     </div>
   );

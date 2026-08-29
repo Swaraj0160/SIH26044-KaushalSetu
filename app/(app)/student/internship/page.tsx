@@ -5,6 +5,42 @@ import { Progress } from "@/components/ui/progress";
 import { getDataset } from "@/lib/demo/dataset";
 import { currentStudentId } from "@/lib/guards";
 
+type LifecycleState = "done" | "current" | "upcoming";
+interface LifecycleStep {
+  key: string;
+  label: string;
+  state: LifecycleState;
+  detail?: string;
+}
+
+const LIFECYCLE_ORDER = [
+  "discovered",
+  "applied",
+  "shortlisted",
+  "selected",
+  "onboarding",
+  "active",
+  "milestones",
+  "mentor_feedback",
+  "final_evaluation",
+  "completed",
+  "verified_skills",
+] as const;
+
+const LIFECYCLE_LABEL: Record<string, string> = {
+  discovered: "Discovered",
+  applied: "Applied",
+  shortlisted: "Shortlisted",
+  selected: "Selected",
+  onboarding: "Onboarding",
+  active: "Active",
+  milestones: "Milestones",
+  mentor_feedback: "Mentor feedback",
+  final_evaluation: "Final evaluation",
+  completed: "Completed",
+  verified_skills: "Verified skills",
+};
+
 export default async function InternshipWorkspace() {
   const sid = await currentStudentId();
   const d = getDataset();
@@ -15,10 +51,11 @@ export default async function InternshipWorkspace() {
       <div>
         <PageHeader title="Internship workspace" />
         <p className="text-muted-foreground text-sm">
-          No internships yet. When you are selected, this workspace tracks
-          objectives, milestones, weekly logs, mentor feedback and — on
-          completion — writes a verified skill delta to your Competency
-          Passport.
+          No internships yet. When you are selected, this workspace tracks the
+          full lifecycle — discovered → applied → shortlisted → selected →
+          onboarding → active → milestones → mentor feedback → final evaluation
+          → completed — and, on completion, writes a verified skill delta to
+          your Competency Passport.
         </p>
       </div>
     );
@@ -36,6 +73,65 @@ export default async function InternshipWorkspace() {
         const role = d.roleById.get(opp.roleId)!;
         const employer = d.employerById.get(it.employerId)!;
         const doneMilestones = it.milestones.filter((m) => m.done).length;
+        const app = d.applications.find(
+          (a) => a.studentId === sid && a.opportunityId === it.opportunityId,
+        );
+        const reachedShortlist =
+          !!app &&
+          ["shortlisted", "interview", "offer", "hired"].includes(app.status);
+        const isCompleted = it.status === "completed";
+        const started = isCompleted || it.status === "active";
+
+        const stepState = (key: string): LifecycleState => {
+          switch (key) {
+            case "discovered":
+              return "done";
+            case "applied":
+              return app ? "done" : "upcoming";
+            case "shortlisted":
+              return reachedShortlist ? "done" : app ? "current" : "upcoming";
+            case "selected":
+              return "done";
+            case "onboarding":
+              return started ? "done" : "current";
+            case "active":
+              return isCompleted ? "done" : started ? "current" : "upcoming";
+            case "milestones":
+              return doneMilestones === it.milestones.length &&
+                it.milestones.length > 0
+                ? "done"
+                : doneMilestones > 0
+                  ? "current"
+                  : "upcoming";
+            case "mentor_feedback":
+              return it.weeklyLogs.length ? "done" : "upcoming";
+            case "final_evaluation":
+              return it.finalEvaluation ? "done" : "upcoming";
+            case "completed":
+              return isCompleted ? "done" : "upcoming";
+            case "verified_skills":
+              return it.finalEvaluation?.verifiedCompetencyIds.length
+                ? "done"
+                : "upcoming";
+            default:
+              return "upcoming";
+          }
+        };
+
+        const steps: LifecycleStep[] = LIFECYCLE_ORDER.map((key) => ({
+          key,
+          label: LIFECYCLE_LABEL[key],
+          state: stepState(key),
+          detail:
+            key === "milestones"
+              ? `${doneMilestones}/${it.milestones.length}`
+              : key === "mentor_feedback" && it.weeklyLogs.length
+                ? `${it.weeklyLogs.length} logs`
+                : key === "verified_skills" && it.finalEvaluation
+                  ? `${it.finalEvaluation.verifiedCompetencyIds.length} competencies`
+                  : undefined,
+        }));
+
         return (
           <Card key={it.id}>
             <CardHeader className="flex-row items-start justify-between">
@@ -55,7 +151,50 @@ export default async function InternshipWorkspace() {
                 {it.status}
               </Badge>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5">
+              {/* lifecycle pipeline */}
+              <div>
+                <div className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
+                  Lifecycle
+                </div>
+                <ol className="flex flex-wrap gap-x-1.5 gap-y-2">
+                  {steps.map((step, i) => (
+                    <li key={step.key} className="flex items-center gap-1.5">
+                      <span
+                        className={[
+                          "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs whitespace-nowrap",
+                          step.state === "done"
+                            ? "border-success/30 bg-success/10 text-success"
+                            : step.state === "current"
+                              ? "border-primary/40 bg-primary-muted text-primary font-medium"
+                              : "border-border text-muted-foreground",
+                        ].join(" ")}
+                      >
+                        <span aria-hidden>
+                          {step.state === "done"
+                            ? "✓"
+                            : step.state === "current"
+                              ? "●"
+                              : "○"}
+                        </span>
+                        {step.label}
+                        {step.detail ? (
+                          <span className="opacity-70">· {step.detail}</span>
+                        ) : null}
+                      </span>
+                      {i < steps.length - 1 ? (
+                        <span
+                          className="text-muted-foreground/50 text-xs"
+                          aria-hidden
+                        >
+                          →
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
               <div>
                 <div className="text-muted-foreground mb-1 flex items-center justify-between text-xs">
                   <span>Milestones</span>
