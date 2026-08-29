@@ -942,6 +942,9 @@ export function getPassport(studentId: Id) {
     verifiedSkills,
     projects: d.projects.filter((p) => p.studentId === studentId),
     certifications: d.certifications.filter((c) => c.studentId === studentId),
+    achievements: d.achievements
+      .filter((a) => a.studentId === studentId)
+      .sort((a, b) => b.date.localeCompare(a.date)),
     endorsements: student.endorsements.map((e) => ({
       ...e,
       competencyName:
@@ -1101,7 +1104,8 @@ export interface ActivityItem {
     | "internship"
     | "application"
     | "certificate"
-    | "endorsement";
+    | "endorsement"
+    | "achievement";
 }
 
 export function getRecentActivity(studentId: Id, limit = 6): ActivityItem[] {
@@ -1134,6 +1138,13 @@ export function getRecentActivity(studentId: Id, limit = 6): ActivityItem[] {
       when: e.date,
       kind: "endorsement",
       label: `${e.role === "industry" ? "Industry" : "Faculty"} endorsed ${d.competencyById.get(e.competencyId)?.name ?? "a competency"}`,
+    });
+  }
+  for (const a of d.achievements.filter((a) => a.studentId === studentId)) {
+    items.push({
+      when: a.date,
+      kind: "achievement",
+      label: `${a.title}${a.organisation ? ` · ${a.organisation}` : ""}`,
     });
   }
   for (const it of d.internships.filter((i) => i.studentId === studentId)) {
@@ -1237,4 +1248,34 @@ export function getStudentProjects(studentId: Id) {
 
 export function getProject(studentId: Id, projectId: Id) {
   return getStudentProjects(studentId).find((p) => p.id === projectId);
+}
+
+// ── certifications & achievements ─────────────────────────────────────────
+
+export function getCertifications(studentId: Id) {
+  const d = ds();
+  return d.certifications
+    .filter((c) => c.studentId === studentId)
+    .map((c) => ({
+      ...c,
+      skillNames: c.skillIds.map((sid) => d.skillById.get(sid)?.name ?? sid),
+      competencyNames: (c.competencyClaims ?? [])
+        .map((cid) => d.competencyById.get(cid)?.name)
+        .filter((x): x is string => Boolean(x)),
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export function getAchievements(studentId: Id) {
+  const d = ds();
+  return d.achievements
+    .filter((a) => a.studentId === studentId)
+    .map((a) => ({
+      ...a,
+      skillNames: a.skillIds.map((sid) => d.skillById.get(sid)?.name ?? sid),
+      competencyNames: a.competencyClaims
+        .map((cid) => d.competencyById.get(cid)?.name)
+        .filter((x): x is string => Boolean(x)),
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date));
 }

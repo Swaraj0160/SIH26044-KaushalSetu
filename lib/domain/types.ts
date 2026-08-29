@@ -180,8 +180,33 @@ export interface Certification {
   name: string;
   issuer: string;
   date: string;
+  expiry?: string;
   skillIds: Id[];
+  competencyClaims?: Id[];
+  verificationStatus?: "unverified" | "self_verified" | "issuer_verified";
   credentialUrl?: string;
+}
+
+export type AchievementType =
+  | "hackathon"
+  | "award"
+  | "competition"
+  | "publication"
+  | "research"
+  | "leadership"
+  | "extracurricular";
+
+export interface Achievement {
+  id: Id;
+  studentId: Id;
+  type: AchievementType;
+  title: string;
+  organisation: string;
+  date: string;
+  description: string;
+  skillIds: Id[];
+  competencyClaims: Id[];
+  evidence?: { url?: string; verifiedBy?: string };
 }
 
 export interface AssessmentResult {

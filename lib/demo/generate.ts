@@ -15,6 +15,7 @@ import type {
   ApplicationStatus,
   AuditEntry,
   Certification,
+  Achievement,
   Collaboration,
   CollaborationStage,
   CollaborationType,
@@ -121,6 +122,7 @@ export interface DemoData {
   students: Student[];
   projects: Project[];
   certifications: Certification[];
+  achievements: Achievement[];
   opportunities: Opportunity[];
   applications: Application[];
   internships: Internship[];
@@ -1270,6 +1272,84 @@ export function generate(): DemoData {
     });
   });
 
+  // ── Achievements ─────────────────────────────────────────────────────
+  const achievements: Achievement[] = [
+    {
+      id: "ach-aarav-1",
+      studentId: "stu-aarav",
+      type: "hackathon",
+      title: "2nd place — InnovateX National Hackathon",
+      organisation: "COEP · TechFest",
+      date: isoDaysAgo(210),
+      description:
+        "Built a real-time demand-forecasting dashboard in 36 hours; led modelling and evaluation.",
+      skillIds: ["sk-ml", "sk-python-data", "sk-viz"],
+      competencyClaims: ["cmp-collaboration", "cmp-ml-engineering"],
+      evidence: {
+        url: "https://example.com/innovatex",
+        verifiedBy: "Event organisers",
+      },
+    },
+    {
+      id: "ach-aarav-2",
+      studentId: "stu-aarav",
+      type: "leadership",
+      title: "Coordinator — Departmental ML Study Group",
+      organisation: "COEP CSE",
+      date: isoDaysAgo(120),
+      description:
+        "Ran a 30-member weekly reading group on applied ML; organised 2 guest talks.",
+      skillIds: ["sk-comm", "sk-stakeholder"],
+      competencyClaims: ["cmp-communication", "cmp-collaboration"],
+    },
+    {
+      id: "ach-ananya-1",
+      studentId: "stu-ananya",
+      type: "publication",
+      title: "Poster — Standardisation gaps in market Ashwagandha churna",
+      organisation: "National Ayurveda Students' Research Conclave",
+      date: isoDaysAgo(150),
+      description:
+        "Presented a comparative pharmacognostic analysis; accepted for the poster track.",
+      skillIds: ["sk-herbal-id", "sk-lit-review", "sk-domain-writing"],
+      competencyClaims: ["cmp-domain-research"],
+      evidence: { verifiedBy: "Conference committee" },
+    },
+  ];
+  const ACH_TITLE = {
+    hackathon: "Finalist — inter-college hackathon",
+    award: "Merit award for academic performance",
+    competition: "Top-10 — national skill competition",
+    leadership: "Class representative / club lead",
+    extracurricular: "NSS / community outreach lead",
+  } as const;
+  const achTypes = Object.keys(ACH_TITLE) as Array<keyof typeof ACH_TITLE>;
+  for (const s of students) {
+    if (s.id === "stu-aarav" || s.id === "stu-ananya") continue;
+    if (!rng.chance(0.45)) continue;
+    const n = rng.int(1, 2);
+    for (let k = 0; k < n; k++) {
+      const t = rng.pick(achTypes);
+      achievements.push({
+        id: `ach-${s.id}-${k}`,
+        studentId: s.id,
+        type: t,
+        title: ACH_TITLE[t],
+        organisation: instName(s.institutionId),
+        date: isoDaysAgo(rng.int(60, 500)),
+        description: "Recognised for sustained contribution and results.",
+        skillIds: rng.sample(
+          s.skills.map((x) => x.skillId),
+          rng.int(0, 2),
+        ),
+        competencyClaims: rng.chance(0.4) ? ["cmp-collaboration"] : [],
+      });
+    }
+  }
+  function instName(id: Id) {
+    return institutions.find((i) => i.id === id)?.shortName ?? "—";
+  }
+
   return {
     institutions,
     departments,
@@ -1279,6 +1359,7 @@ export function generate(): DemoData {
     students,
     projects,
     certifications,
+    achievements,
     opportunities,
     applications,
     internships,

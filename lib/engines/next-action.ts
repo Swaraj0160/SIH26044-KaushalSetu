@@ -101,7 +101,7 @@ export function computeNextActions(ctx: NextActionContext): NextAction[] {
       why: `${topGap.name} is a mandatory competency for ${ctx.targetRole.title} and currently your ${
         topGap.priority
       }-priority gap (level ${topGap.current} vs ${topGap.required}). It is blocking the role.`,
-      href: "/student/gaps",
+      href: "/student/career?tab=gaps",
       ctaLabel: "Open the plan",
       score: 0.88,
       kind: "close_gap",
@@ -163,7 +163,7 @@ export function computeNextActions(ctx: NextActionContext): NextAction[] {
       stage: 6,
       title: `Prepare for your ${liveApp.title ?? "shortlisted application"}`,
       why: `You're at the "${liveApp.status}" stage. Review the role's competency requirements and your gap for it before the next round.`,
-      href: "/student/applications",
+      href: "/student/career?tab=applications",
       ctaLabel: "Open applications",
       score: 0.6,
       kind: "application_step",
@@ -177,7 +177,7 @@ export function computeNextActions(ctx: NextActionContext): NextAction[] {
       stage: 6,
       title: "Explore roles close to your profile",
       why: `Your readiness for ${ctx.targetRole.title} is ${ctx.readiness.score}/100. Comparing adjacent roles can reveal a faster on-ramp.`,
-      href: "/student/simulator",
+      href: "/student/career?tab=explore",
       ctaLabel: "Compare roles",
       score: 0.4,
       kind: "explore",
