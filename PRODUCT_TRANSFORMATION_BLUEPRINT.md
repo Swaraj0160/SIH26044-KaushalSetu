@@ -1531,3 +1531,26 @@ application detail timeline; institution "record an intervention"; onboarding
 wizard; Experiences generalisation; My Learning tracker; Mentors; peer
 endorsement; full IA refactor (Record hub / Passport-as-view / Copilot→assist);
 the full visual-identity pass and guided-tour overlay.
+
+### Implementation log — pass 2 (design language + action center)
+
+- **Design-language transformation** — `globals.css` v2: centralised `--ks-*`
+  tokens; deep-teal institutional palette (off generic indigo SaaS); warm-paper
+  ground; square-er corners, hairline borders, near-flat elevation; restrained
+  GOV.UK-style type scale and 3px focus ring; solid surfaces (no glass). Card /
+  Button / app-shell / PageHeader (`eyebrow`) / landing retuned. — _blueprint
+  §41, §42, §5–7, §33_
+- **Institution Action Center** — `/institution/interventions`: record an
+  intervention from a critical heatmap cell (prefilled with dept / skill /
+  recommended action / cohort), track planned → active → completed, synthetic
+  term-over-term outcome on completion. Nav item + Command Center pointer. —
+  _§32, §43 SHOULD 16, §53_
+- **Command-palette quick actions for all five roles** (was student-only). — _§22, §37_
+- Fix: base64-encode session cookies (`ks_patch`, `ks_interventions`) — a literal
+  `%` in stored text made Next's cookie decode throw `URIError`.
+
+Still not done: recruiter posting authoring; application-detail timeline;
+onboarding wizard; Experiences generalisation; My Learning tracker; Mentors;
+peer endorsement; aptitude/soft-skill item banks; full IA refactor
+(Record hub / Passport-as-view / Copilot→assist); guided-tour overlay;
+competency-graph label de-overlap.

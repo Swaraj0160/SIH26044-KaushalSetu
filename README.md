@@ -59,7 +59,7 @@ httpOnly cookie; `requireRole()` guards every workspace route (unauthenticated �
 | **Student**                | Journey-first Home + Next Best Action engine · **editable career goal** (recomputes readiness / gaps / roadmap / matches / journey) · Education (courses → skills, add courses) · competency graph · evidence ledger · **per-skill Skill Card** (level vs target, evidence stack, origins, next step) · honest readiness score · adaptive skill assessment **whose result writes real evidence** · skill gaps + sequenced roadmap · career simulator · explainable opportunity match · **add / edit / remove projects, certifications, achievements** (each recomputes through the engines) · full internship lifecycle pipeline · **"What changed" attention inbox** · Competency Passport (QR-verifiable) · grounded Career Copilot |
 | **Industry / Recruiter**   | Competency-defined postings · evidence-weighted candidate ranking with per-factor breakdown and "Explain vs A → B" · talent search across the pool                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | **Faculty**                | Industry engagement · functional collaboration pipeline · evidence verification queue with **Approve / Request changes**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| **Institution / Ministry** | Command center · department readiness · **department × skill heatmap** drillable to named students + recommended action · placement intelligence · industry skill-demand intelligence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **Institution / Ministry** | Command center · department readiness · **department × skill heatmap** drillable to named students + recommended action · **Action Center: record an intervention from a heatmap gap → track planned/active/completed → term-over-term "did the gap move?"** · placement intelligence · industry skill-demand intelligence                                                                                                                                                                                                                                                                                                                                                                                                            |
 | **Admin**                  | Skill/role taxonomy · employer verification · **live matching-weight tuner** · audit log                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | **Public**                 | Landing page · one-click judge personas · `/judge` showcase · `/verify/[credentialId]`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
@@ -91,6 +91,25 @@ signed cookie (`lib/session-store.ts`) applied over the base dataset per request
 state. It is honestly scoped: **this browser session only, cleared on sign-out
 and on redeploy, not shared with other roles' views.** A production build swaps
 `lib/session-store.ts` for real writes; `lib/data` and the engines do not change.
+
+## Design language
+
+A modern Indian **digital public service** system, synthesised from
+[UX4G](https://www.ux4g.gov.in/) (token-driven government design discipline) and
+the [GOV.UK Design System](https://design-system.service.gov.uk/) (complex
+services should feel simple; restrained type; colour is functional; strong
+keyboard focus) — an original KaushalSetu identity, not a copy of either.
+
+- **Tokens** (`app/globals.css`): `--ks-*` are the source of truth (colour,
+  semantic, surface, border, text); the Tailwind-facing names alias them.
+- **Palette:** deep **teal** primary (institutional, tied to Ayush/wellness) —
+  deliberately _not_ generic SaaS indigo; saffron accent, used sparingly; a warm
+  paper ground, not cool slate. Semantic colours always pair with an icon/label.
+- Square-er corners, hairline borders, almost-flat elevation — no glass, no
+  card-wall shadows. Restrained institutional type scale (headings never
+  enormous). GOV.UK-style 3px high-contrast keyboard focus. A restrained
+  SIH26044 / Ministry of Ayush context strip on every authenticated screen,
+  honestly labelled _"prototype — not an official government service"_.
 
 ## Tech stack
 
