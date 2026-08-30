@@ -179,11 +179,11 @@ export function AppShell({
       </div>
       <DemoBanner />
       <div className="flex flex-1">
-        <aside className="border-border bg-card/70 sticky top-0 hidden h-screen w-[15rem] shrink-0 flex-col border-r p-3 backdrop-blur md:flex">
+        <aside className="border-border bg-card sticky top-0 hidden h-screen w-[15rem] shrink-0 flex-col border-r p-3 md:flex">
           <Link href="/" className="mb-4 flex items-center px-1.5 py-1">
             <Logo />
           </Link>
-          <div className="border-border bg-card elev-1 mb-4 rounded-lg border p-2.5">
+          <div className="border-border bg-muted/40 mb-4 rounded-md border p-2.5">
             <div className="text-muted-foreground text-xs">Signed in as</div>
             <div className="text-sm font-medium">{persona.name}</div>
             <div className="text-muted-foreground mt-0.5 text-xs">
@@ -215,7 +215,7 @@ export function AppShell({
         </aside>
 
         <div className="min-w-0 flex-1">
-          <header className="border-border bg-background/80 sticky top-0 z-10 flex items-center justify-between gap-3 border-b px-4 py-2.5 backdrop-blur md:px-8">
+          <header className="border-border bg-card sticky top-0 z-10 flex items-center justify-between gap-3 border-b px-4 py-2.5 md:px-8">
             <div className="flex items-center gap-3 md:hidden">
               <Link href="/">
                 <Logo showText={false} />
@@ -257,7 +257,7 @@ function MobileNav({ role }: { role: Persona["role"] }) {
         ]
       : NAV[role].flatMap((g) => g.items).slice(0, 4);
   return (
-    <nav className="border-border bg-background/95 fixed inset-x-0 bottom-0 z-20 flex border-t backdrop-blur md:hidden">
+    <nav className="border-border bg-card fixed inset-x-0 bottom-0 z-20 flex border-t md:hidden">
       {items.map((it) => (
         <Link
           key={it.href}

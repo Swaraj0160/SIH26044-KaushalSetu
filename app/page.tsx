@@ -65,16 +65,16 @@ export default function Landing() {
 
       {/* hero */}
       <section className="border-border relative overflow-hidden border-b">
-        <div className="grid-bg radial-fade absolute inset-0 -z-10" />
-        <div className="mx-auto max-w-6xl px-4 py-16 md:px-8 md:py-24">
+        <div className="text-primary/25 grid-bg radial-fade absolute inset-0 -z-10" />
+        <div className="mx-auto max-w-6xl px-4 py-14 md:px-8 md:py-20">
           <Badge variant="outline" className="mb-4">
             Smart India Hackathon 2026 · Problem SIH26044 · Ministry of Ayush
           </Badge>
-          <h1 className="max-w-3xl text-4xl leading-[1.1] font-semibold md:text-5xl">
+          <h1 className="max-w-3xl text-[1.75rem] leading-tight font-semibold md:text-[2.25rem]">
             From skills to opportunities —{" "}
             <span className="text-primary">with evidence</span>.
           </h1>
-          <p className="text-muted-foreground mt-5 max-w-2xl text-lg">
+          <p className="text-muted-foreground mt-4 max-w-2xl text-base">
             KaushalSetu is an intelligent academia–industry collaboration
             infrastructure. It measures student competencies, makes skills
             trustworthy through evidence, exposes gaps, and matches people to
