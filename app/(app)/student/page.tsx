@@ -129,6 +129,37 @@ export default async function StudentHome() {
         </section>
       ) : null}
 
+      {/* 3.5 — since you were last here */}
+      {home.inbox.length ? (
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
+              Since you were last here
+            </h2>
+            <Link
+              href="/student/notifications"
+              className="text-primary text-xs hover:underline"
+            >
+              view all →
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {home.inbox.map((it, i) => (
+              <Link
+                key={i}
+                href={it.href}
+                className="border-border hover:bg-muted/40 border-l-primary block rounded-md border border-l-4 p-3"
+              >
+                <div className="text-sm font-medium">{it.title}</div>
+                <p className="text-muted-foreground mt-0.5 text-sm">
+                  {it.detail}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {/* 4 — recent activity */}
       {home.activity.length ? (
         <section>

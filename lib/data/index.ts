@@ -1381,7 +1381,119 @@ export function getStudentHome(studentId: Id, ctx?: StudentCtx) {
     nextActions: getNextActions(studentId, ctx),
     activity: getRecentActivity(studentId, 5, ctx),
     recommended: dash.recommended.slice(0, 3),
+    inbox: getInbox(studentId, ctx).attention.slice(0, 3),
   };
+}
+
+// ── "what changed" / attention inbox ──────────────────────────────────────
+
+export interface InboxItem {
+  kind: "attention" | "recent";
+  tone: "action" | "info" | "positive";
+  title: string;
+  detail: string;
+  href: string;
+}
+
+/**
+ * Deterministic. `attention` = things that need the student's action now,
+ * ranked by leverage. `recent` = the activity feed. No timestamps are invented
+ * beyond what the dataset carries.
+ */
+export function getInbox(
+  studentId: Id,
+  ctx?: StudentCtx,
+): { attention: InboxItem[]; recent: InboxItem[] } {
+  const dash = getStudentDashboard(studentId, ctx);
+  const profile = dash.profile;
+  const role = dash.targetRole;
+  const attention: InboxItem[] = [];
+
+  // 1 — pending faculty verification on a project the student owns
+  const pendingProjects = projectsOf(studentId, ctx).filter(
+    (p) =>
+      p.skillIds.length &&
+      !p.facultyVerifiedBy &&
+      !p.evaluations.some((e) => e.role === "faculty"),
+  );
+  if (pendingProjects.length)
+    attention.push({
+      kind: "attention",
+      tone: "action",
+      title: `${pendingProjects.length} project${pendingProjects.length === 1 ? "" : "s"} not yet faculty-verified`,
+      detail: `Request a review of "${pendingProjects[0].title}" — it turns project work into verified evidence.`,
+      href: `/student/projects/${pendingProjects[0].id}`,
+    });
+
+  // 2 — a mandatory role skill with no assessment
+  const unassessed = role.mandatorySkillIds
+    .map((sid) => profile.skills.get(sid))
+    .filter((rs) => rs != null && !rs.assessed)
+    .map((rs) => rs!);
+  if (unassessed.length)
+    attention.push({
+      kind: "attention",
+      tone: "action",
+      title: `${unassessed.length} target-role skill${unassessed.length === 1 ? "" : "s"} still self-declared`,
+      detail: `Assess ${unassessed[0].skill?.name ?? "a skill"} to convert a self-rating into evidence.`,
+      href: `/student/assessment?skill=${unassessed[0].skillId}`,
+    });
+
+  // 3 — top mandatory gap blocking the goal
+  const topGap = dash.gap.gaps
+    .filter((g) => g.gap > 0 && g.mandatory)
+    .sort((a, b) => b.gap - a.gap)[0];
+  if (topGap)
+    attention.push({
+      kind: "attention",
+      tone: "action",
+      title: `${topGap.name} is blocking ${role.title}`,
+      detail: `L${topGap.current} vs L${topGap.required} required. The roadmap sequences how to close it.`,
+      href: "/student/career?tab=roadmap",
+    });
+
+  // 4 — a strong opportunity match not applied to
+  const strongUnapplied = dash.recommended.find(
+    (r) => r.match.score >= 70 && !r.applied,
+  );
+  if (strongUnapplied)
+    attention.push({
+      kind: "attention",
+      tone: "info",
+      title: `Strong match not applied to: ${strongUnapplied.role.title}`,
+      detail: `${strongUnapplied.match.score}% at ${strongUnapplied.employerName}. Review the breakdown before the deadline.`,
+      href: `/student/opportunities/${strongUnapplied.opportunity.id}`,
+    });
+
+  // 5 — an application awaiting the student's move
+  const activeApp = dash.applications.find((a) =>
+    ["shortlisted", "interview", "offer"].includes(a.status),
+  );
+  if (activeApp)
+    attention.push({
+      kind: "attention",
+      tone: "positive",
+      title: `Application update: ${activeApp.opportunity.title.split(" — ")[0]}`,
+      detail: `Now "${activeApp.status.replace(/_/g, " ")}" at ${activeApp.employerName}.`,
+      href: "/student/career?tab=applications",
+    });
+
+  const recent: InboxItem[] = getRecentActivity(studentId, 8, ctx).map((a) => ({
+    kind: "recent",
+    tone: a.kind === "skill" || a.kind === "endorsement" ? "positive" : "info",
+    title: a.label,
+    detail: a.when,
+    href:
+      a.kind === "application"
+        ? "/student/career?tab=applications"
+        : a.kind === "project"
+          ? "/student/projects"
+          : a.kind === "internship"
+            ? "/student/internship"
+            : "/student/skills",
+  }));
+
+  return { attention, recent };
 }
 
 // ── education ─────────────────────────────────────────────────────────────
