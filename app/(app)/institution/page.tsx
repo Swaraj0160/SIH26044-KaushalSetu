@@ -113,8 +113,22 @@ export default async function InstitutionCommandCenter() {
               Cross-reference with{" "}
               <Link href="/demand" className="text-primary underline">
                 industry demand
+              </Link>
+              , then open a red cell on the{" "}
+              <Link
+                href="/institution/heatmap"
+                className="text-primary underline"
+              >
+                heatmap
               </Link>{" "}
-              to prioritise curriculum changes.
+              to record an{" "}
+              <Link
+                href="/institution/interventions"
+                className="text-primary underline"
+              >
+                intervention
+              </Link>
+              .
             </p>
           </CardContent>
         </Card>

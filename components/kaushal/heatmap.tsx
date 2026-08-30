@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { recordInterventionAction } from "@/app/institution-actions";
 import type { HeatCellDetail, HeatmapRow } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
@@ -148,13 +149,50 @@ export function Heatmap({
                 {detail.students.length} students have this skill · mean L
                 {detail.meanLevel}
               </p>
-              <div className="bg-primary/5 mt-3 rounded-lg p-3 text-sm">
+              <div className="border-primary/25 bg-primary/5 mt-3 rounded-md border p-3 text-sm">
                 <div className="text-primary font-medium">
                   Recommended institutional action
                 </div>
                 <p className="text-muted-foreground">
                   {detail.recommendedAction}
                 </p>
+                {sel ? (
+                  <form
+                    action={recordInterventionAction}
+                    className="mt-3 flex flex-wrap items-center gap-2"
+                  >
+                    <input type="hidden" name="departmentId" value={sel.dept} />
+                    <input
+                      type="hidden"
+                      name="departmentName"
+                      value={detail.department}
+                    />
+                    <input type="hidden" name="skillId" value={sel.skill} />
+                    <input
+                      type="hidden"
+                      name="skillName"
+                      value={detail.skill}
+                    />
+                    <input
+                      type="hidden"
+                      name="action"
+                      value={detail.recommendedAction}
+                    />
+                    <input
+                      type="hidden"
+                      name="cohortSize"
+                      value={detail.students.length}
+                    />
+                    <input
+                      name="owner"
+                      defaultValue="Placement & Competency Cell"
+                      className="border-input bg-background rounded-md border px-2 py-1 text-xs"
+                    />
+                    <button className="bg-primary text-primary-foreground rounded-md px-2.5 py-1 text-xs font-medium hover:opacity-90">
+                      Record as intervention →
+                    </button>
+                  </form>
+                ) : null}
               </div>
               <div className="mt-3 max-h-56 overflow-y-auto">
                 <table className="w-full text-sm">

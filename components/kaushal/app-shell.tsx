@@ -80,6 +80,11 @@ const NAV: Record<Persona["role"], NavGroup[]> = {
       label: "Understand & Improve",
       items: [
         { href: "/institution/heatmap", label: "Skill Heatmap", icon: "▦" },
+        {
+          href: "/institution/interventions",
+          label: "Interventions",
+          icon: "◑",
+        },
         { href: "/institution/students", label: "Cohorts", icon: "≡" },
         {
           href: "/institution/placements",
@@ -140,6 +145,98 @@ const QUICK_ACTIONS: Partial<Record<Persona["role"], CommandItem[]>> = {
       group: "Action",
       href: "/student/passport",
       keywords: "verify qr share",
+    },
+    {
+      label: "Add a project",
+      group: "Action",
+      href: "/student/projects",
+      keywords: "evidence create new",
+    },
+    {
+      label: "Upload a certificate",
+      group: "Action",
+      href: "/student/certifications",
+      keywords: "credential add",
+    },
+    {
+      label: "What changed",
+      group: "Action",
+      href: "/student/notifications",
+      keywords: "inbox notifications updates",
+    },
+  ],
+  recruiter: [
+    {
+      label: "Review candidates for a role",
+      group: "Action",
+      href: "/recruiter/opportunities",
+      keywords: "ranking match shortlist",
+    },
+    {
+      label: "Search talent by competency",
+      group: "Action",
+      href: "/recruiter/talent",
+      keywords: "find candidates",
+    },
+    {
+      label: "Skill-demand signals",
+      group: "Action",
+      href: "/demand",
+      keywords: "market trends",
+    },
+  ],
+  faculty: [
+    {
+      label: "Review the verification queue",
+      group: "Action",
+      href: "/faculty/verification",
+      keywords: "approve evidence pending",
+    },
+    {
+      label: "Open my collaboration pipeline",
+      group: "Action",
+      href: "/faculty/collaborations",
+      keywords: "industry fdp",
+    },
+  ],
+  institution_admin: [
+    {
+      label: "Open the skill heatmap",
+      group: "Action",
+      href: "/institution/heatmap",
+      keywords: "department gap critical",
+    },
+    {
+      label: "Record / track an intervention",
+      group: "Action",
+      href: "/institution/interventions",
+      keywords: "action outcome",
+    },
+    {
+      label: "Placement intelligence",
+      group: "Action",
+      href: "/institution/placements",
+      keywords: "outcomes conversion",
+    },
+  ],
+  super_admin: [
+    {
+      label: "Tune matching weights",
+      group: "Action",
+      href: "/admin/matching",
+      keywords: "config score recompute",
+    },
+    {
+      label: "Employer verification queue",
+      group: "Action",
+      href: "/admin/employers",
+      keywords: "approve pending",
+    },
+    {
+      label: "Audit log",
+      group: "Action",
+      href: "/admin/audit",
+      keywords: "events history",
     },
   ],
 };

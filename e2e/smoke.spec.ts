@@ -186,6 +186,33 @@ test("legacy student list routes redirect into the Career destination", async ({
   await expect(page).toHaveURL(/\/student\/career\?tab=explore/);
 });
 
+test("institution can record an intervention from a heatmap gap and track it", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: /continue as institution/i }).click();
+  await page.waitForURL(/\/institution$/);
+
+  await page.goto("/institution/interventions");
+  await expect(page.getByText(/no interventions yet/i)).toBeVisible();
+
+  await page.goto("/institution/heatmap");
+  await page.locator("table button").first().click();
+  await expect(
+    page.getByText(/recommended institutional action/i),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /record as intervention/i }).click();
+
+  await expect(page).toHaveURL(/interventions\?created=1/);
+  await expect(page.getByText(/intervention recorded/i)).toBeVisible();
+  // it starts in "planned" and can be advanced
+  await page
+    .getByRole("button", { name: /^start$/i })
+    .first()
+    .click();
+  await expect(page.getByText(/^active$/i).first()).toBeVisible();
+});
+
 test("faculty verification offers approve and request-changes", async ({
   page,
 }) => {

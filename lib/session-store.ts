@@ -36,7 +36,7 @@ import type {
 } from "@/lib/domain/types";
 
 const COOKIE = "ks_patch";
-const MAX_BYTES = 3600; // keep well under the 4 KB cookie ceiling
+const MAX_JSON_BYTES = 2700; // ~3.6 KB once base64-encoded — under the 4 KB cookie ceiling
 const MAX_TEXT = 400;
 const MAX_ITEMS = 12;
 
@@ -126,7 +126,8 @@ export async function getPatch(): Promise<SessionPatch> {
   const raw = (await cookies()).get(COOKIE)?.value;
   if (!raw) return structuredClone(EMPTY);
   try {
-    const v = JSON.parse(raw) as Partial<SessionPatch>;
+    const json = Buffer.from(raw, "base64").toString("utf8");
+    const v = JSON.parse(json) as Partial<SessionPatch>;
     return {
       ...structuredClone(EMPTY),
       ...v,
@@ -156,9 +157,10 @@ export class SessionStoreFullError extends Error {
 
 async function writePatch(p: SessionPatch): Promise<void> {
   const json = JSON.stringify(p);
-  if (Buffer.byteLength(json, "utf8") > MAX_BYTES)
+  if (Buffer.byteLength(json, "utf8") > MAX_JSON_BYTES)
     throw new SessionStoreFullError();
-  (await cookies()).set(COOKIE, json, {
+  const value = Buffer.from(json, "utf8").toString("base64");
+  (await cookies()).set(COOKIE, value, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
