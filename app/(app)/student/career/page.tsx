@@ -143,7 +143,7 @@ async function GoalTab({ sid, ctx }: { sid: string; ctx: StudentCtx }) {
     <div className="space-y-4">
       <Card>
         <CardContent className="space-y-4 pt-5">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Field label="Target role" value={dash.targetRole.title} />
             <Field label="Family" value={dash.targetRole.family} />
             <Field

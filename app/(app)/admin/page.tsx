@@ -24,7 +24,7 @@ export default async function AdminOverview() {
         actions={<Badge variant="accent">Demo persona</Badge>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-5">
             <Stat label="Institutions" value={d.institutions.length} />
@@ -108,7 +108,7 @@ export default async function AdminOverview() {
         </Card>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Link
           href="/admin/taxonomy"
           className="border-border bg-card hover:border-primary/50 rounded-xl border p-4"

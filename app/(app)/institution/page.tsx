@@ -22,7 +22,7 @@ export default async function InstitutionCommandCenter() {
         actions={<Badge variant="accent">Demo persona · {persona.name}</Badge>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-5">
             <Stat label="Students" value={ov.totalStudents} />
@@ -120,7 +120,7 @@ export default async function InstitutionCommandCenter() {
         </Card>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Card>
           <CardContent className="pt-5">
             <Stat label="Industry partners" value={ov.industryPartners} />

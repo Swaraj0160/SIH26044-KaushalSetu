@@ -49,7 +49,7 @@ export default async function CompetencyProfilePage() {
       />
       <JourneyStepper stages={journey} variant="strip" />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-5">
             <Stat

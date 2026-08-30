@@ -62,7 +62,7 @@ export default async function IndustryHome() {
         actions={<Badge variant="accent">Demo · {persona.name}</Badge>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>
           <CardContent className="pt-5">
             <Stat label="Open roles" value={opps.length} />

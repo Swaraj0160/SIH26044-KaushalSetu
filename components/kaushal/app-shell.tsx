@@ -167,6 +167,16 @@ export function AppShell({
 
   return (
     <div className="app-canvas flex min-h-screen flex-col">
+      <div className="border-border bg-foreground/[0.03] text-muted-foreground flex items-center justify-between border-b px-4 py-1 text-[0.7rem] tracking-wide">
+        <span>
+          Smart India Hackathon 2026 · Problem{" "}
+          <span className="text-foreground font-medium">SIH26044</span> ·
+          Ministry of Ayush
+        </span>
+        <span className="hidden sm:inline">
+          Prototype — not an official government service
+        </span>
+      </div>
       <DemoBanner />
       <div className="flex flex-1">
         <aside className="border-border bg-card/70 sticky top-0 hidden h-screen w-[15rem] shrink-0 flex-col border-r p-3 backdrop-blur md:flex">

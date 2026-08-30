@@ -20,7 +20,7 @@ export const PERSONAS: Persona[] = [
     key: "student-aarav",
     role: "student",
     name: "Aarav Sharma",
-    subtitle: "B.Tech CSE · COEP · targeting ML Engineer",
+    subtitle: "B.Tech CSE · COEP",
     refId: "stu-aarav",
     blurb:
       "Strong ML fundamentals, an active internship, and a clear deployment gap. The main student walkthrough.",
@@ -29,7 +29,7 @@ export const PERSONAS: Persona[] = [
     key: "student-ananya",
     role: "student",
     name: "Dr. Ananya Nair",
-    subtitle: "BAMS · AIIA · targeting Ayurvedic Formulation QA Analyst",
+    subtitle: "BAMS · AIIA",
     refId: "stu-ananya",
     blurb:
       "The Ministry of Ayush angle: a BAMS graduate moving into industry QA, with classical strengths and GMP/lab gaps.",
