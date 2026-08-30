@@ -53,15 +53,20 @@ sees the systemic pattern → academia and industry improve each other._
   Final evaluation → Completed → **Verified skills**. Skill delta Docker L2→L4,
   _"on completion this becomes industry-verified evidence in the Passport."_
 
-## 2:15–3:00 — Career: one destination
+## 2:15–3:00 — Career: one destination, and it's live
 
-- **Career** (single tabbed page). **Goal** — target role, what's blocking it,
-  roles you're closest to. **Readiness** — the 0–100 score broken into weighted
-  factors with the line _"Deterministic score — AI can explain it; AI never sets
-  it."_ **Skill Gaps** + **Roadmap** — prerequisite-sequenced, _"every step ends
-  in evidence a recruiter will trust."_ **Explore Roles** — the simulator, ML
-  Engineer vs Data Scientist side by side. **Opportunities** / **Applications** —
-  the pipeline, tied to the goal.
+- **Career** (single tabbed page). **Goal** — click **"Change career goal"**,
+  pick a different target role, Save. _Everything_ recomputes in front of the
+  judge: readiness, the blocking gap, the roadmap, "roles you're closest to",
+  and the journey stepper on Home. _"This isn't a slideshow — the engines run on
+  whatever the student tells them."_
+- **Readiness** — the 0–100 score broken into weighted factors with the line
+  _"Deterministic score — AI can explain it; AI never sets it."_ **Skill Gaps** +
+  **Roadmap** — prerequisite-sequenced. **Explore Roles** — the simulator.
+  **Opportunities** / **Applications** — the pipeline, tied to the goal.
+- Optional beat: on **Projects**, click **"Add a project"**, tick _Containers
+  (Docker)_, Save → the skill's evidence jumps from self-declared to
+  project-backed on the Skill Card, and readiness moves.
 
 ## 3:00–4:00 — Industry matching (explainable, both sides)
 

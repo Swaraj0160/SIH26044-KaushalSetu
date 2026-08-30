@@ -41,6 +41,27 @@ Profile; the Profile feeds Career readiness, matching and the Passport. Nav is
 four destinations: Home / My Journey / Career / My Profile. A `⌘K` command
 palette addresses every page and quick action.
 
+### Editable demo data (no database)
+
+```mermaid
+flowchart LR
+  FORM[student edits goal / project / cert / achievement / assessment] --> ACT[server action · Zod validate]
+  ACT --> STORE[lib/session-store · ks_patch signed cookie]
+  REQ[next request] --> VIEW[lib/data/viewer · getStudentCtx]
+  STORE --> VIEW
+  BASE[(seeded synthetic dataset)] --> VIEW
+  VIEW --> CTX[StudentCtx: patched student + merged collections + folded evidence]
+  CTX --> DATA[lib/data view-models · optional ctx arg]
+  DATA --> ENG[deterministic engines recompute]
+```
+
+The patch is **per browser session** (cleared on sign-out / redeploy), bounded
+in size (cookie), and not shared with other roles' views. `lib/data` functions
+take an optional `StudentCtx`; omitted → base dataset, identical behaviour, so
+tests and the recruiter/faculty/institution paths are unaffected. Production
+replaces `lib/session-store` with real writes; the engines and view-models do
+not change.
+
 ## Next Best Action engine
 
 ```mermaid

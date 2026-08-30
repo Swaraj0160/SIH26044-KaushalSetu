@@ -1,7 +1,9 @@
 # PRODUCT_TRANSFORMATION_BLUEPRINT — KaushalSetu
 
-**Status: analysis only. No code, schema, routes or components were changed to produce this.**
-The only file written is this one. Implementation waits for your review.
+**Status: analysis complete; implementation in progress.**
+
+The audit below is unchanged from the review draft. Implementation against it has
+started — see **§ Implementation log** at the very end for what has shipped.
 
 Method: read the six strategy docs; walked the running application (production build,
 every role, ~30 screens, desktop + mobile); mapped routes, engines, components and the
@@ -1491,3 +1493,41 @@ the product a student would still be using in year four to get there.
 - Symplicity CSM / Outcome / Pathways: <https://www.symplicity.com/blog/how-leading-universities-are-transforming-career-services-with-symplicity-csm>, <https://www.symplicity.com/outcome>
 - Eightfold / Gloat skills intelligence: <https://eightfold.ai/solutions/skills-intelligence/>, <https://fuel50.com/blog/skills-intelligence-platforms>, <https://hrtechsaas.com/blog/best-talent-intelligence-platforms/>
 - NSQF / NCrF / APAAR (per `RESEARCH.md`): <https://www.nsda.gov.in/nsqf.html>, <https://www.education.gov.in/en/nep/ncrf-apaar>
+
+---
+
+## Implementation log
+
+Executed against this blueprint (P0 first, keeping `main` green after every commit):
+
+**Shipped**
+
+- **Editable student record without a DB** — `lib/session-store.ts` (per-session
+  signed cookie) + `lib/data/viewer.ts` + an optional `StudentCtx` on every
+  student view-model. Career goal, projects, certifications, achievements,
+  courses and assessment results are genuinely editable and recompute through
+  every deterministic engine (readiness, skill gap, matching, Next Best Action,
+  competency graph). Honestly scoped and labelled (session-only, resets on
+  redeploy, not shared across roles). — _blueprint §43 MUST 1, 2; §21, §29_
+- **Editable Career Goal** with full recompute (role + secondary interests). — _§43 MUST 1_
+- **Inline add / edit / remove** for Projects, Certifications, Achievements
+  (validated server actions, save banners, session-item badges). — _§43 MUST 2_
+- **Per-skill Skill Card** `/student/skills/[id]` — effective vs self vs target
+  level, last assessed, the ordered evidence stack, where the skill came from,
+  the competencies it feeds, one deterministic next step. Skills are now
+  clickable from the ledger and the education page. — _§25, §43 MUST 3_
+- **Assessment surfaced** as a first-class nav item; the adaptive result screen
+  **writes a real assessment evidence item** that recomputes confidence. — _§43 MUST 4 (partial: aptitude/soft-skill items still to add)_
+- **"What changed" attention inbox** — deterministic, from the state of the
+  record; `/student/notifications` + "Since you were last here" on Home. — _§36, §59, §43 MUST 8_
+- **Foundation fixes** — de-duplicated `<title>`; `/login` shows a "you're signed
+  in" panel instead of silently redirecting; removed leaked "FNV-1a" jargon from
+  `/judge`; institutional SIH26044 / Ministry of Ayush context strip on every
+  authenticated screen (honestly labelled a prototype); 2-up mobile stat grids;
+  dropped the stale "targeting <role>" persona subtitle. — _§D-list, §5–7, §13–15_
+
+**Not yet done** (tracked for the next passes): recruiter posting authoring;
+application detail timeline; institution "record an intervention"; onboarding
+wizard; Experiences generalisation; My Learning tracker; Mentors; peer
+endorsement; full IA refactor (Record hub / Passport-as-view / Copilot→assist);
+the full visual-identity pass and guided-tour overlay.
