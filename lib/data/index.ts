@@ -1016,6 +1016,125 @@ export function evidenceForSkill(studentId: Id, skillId: Id, ctx?: StudentCtx) {
   return { ...scoreEvidence(ss.evidence), evidence: ss.evidence };
 }
 
+/** Per-skill "skill card": level, target, the ordered evidence stack, origins
+ *  and the single most useful next step. */
+export function getSkillDetail(studentId: Id, skillId: Id, ctx?: StudentCtx) {
+  const d = ds();
+  const skill = d.skillById.get(skillId);
+  if (!skill) return undefined;
+  const student = studentOf(studentId, ctx);
+  const profile = resolveStudent(studentId, ctx);
+  const rs = profile.skills.get(skillId);
+  const raw = student.skills.find((x) => x.skillId === skillId);
+  const targetRole = d.roleById.get(student.targetRoleId)!;
+
+  // target level = highest role requirement across competencies containing this skill
+  const compIds = d.competencies
+    .filter((c) => c.skillIds.includes(skillId))
+    .map((c) => c.id);
+  let targetLevel = 0;
+  for (const req of targetRole.requirements) {
+    if (compIds.includes(req.competencyId))
+      targetLevel = Math.max(targetLevel, req.minLevel);
+  }
+  if (targetRole.mandatorySkillIds.includes(skillId))
+    targetLevel = Math.max(targetLevel, 4);
+
+  const KIND_ORDER: Record<string, number> = {
+    industry_verified: 0,
+    faculty_verified: 1,
+    assessment: 2,
+    project: 3,
+    certificate: 4,
+    self_declared: 5,
+  };
+  const stack = [...(raw?.evidence ?? [])].sort(
+    (a, b) => (KIND_ORDER[a.kind] ?? 9) - (KIND_ORDER[b.kind] ?? 9),
+  );
+  const lastAssessed =
+    stack
+      .filter((e) => e.kind === "assessment" && e.date)
+      .sort((a, b) => b.date.localeCompare(a.date))[0]?.date ?? null;
+
+  const courses = student.education.courses
+    .filter((c) => c.skillIds.includes(skillId))
+    .map((c) => ({ code: c.code, title: c.title, grade: c.grade }));
+  const projects = projectsOf(studentId, ctx)
+    .filter((p) => p.skillIds.includes(skillId))
+    .map((p) => ({ id: p.id, title: p.title }));
+  const certifications = certsOf(studentId, ctx)
+    .filter((c) => c.skillIds.includes(skillId))
+    .map((c) => ({ id: c.id, name: c.name }));
+
+  const held = Boolean(rs);
+  const level = rs?.effectiveLevel ?? 0;
+  const hasHuman = rs?.evidence.hasHumanVerification ?? false;
+  const assessed = rs?.assessed ?? false;
+
+  let nextStep: { label: string; href: string; why: string };
+  if (!held) {
+    nextStep = {
+      label: "Take an assessment",
+      href: `/student/assessment?skill=${skillId}`,
+      why: "You do not hold this skill yet. An assessment is the fastest way to establish a baseline.",
+    };
+  } else if (!assessed) {
+    nextStep = {
+      label: "Take the assessment",
+      href: `/student/assessment?skill=${skillId}`,
+      why: "This level is self-declared. An assessment converts it into evidence and raises confidence.",
+    };
+  } else if (!hasHuman) {
+    nextStep = {
+      label: "Attach a project",
+      href: "/student/projects",
+      why: "Assessed but not yet verified by a human. A project (then a faculty review) pushes confidence to high/verified.",
+    };
+  } else if (level < targetLevel) {
+    nextStep = {
+      label: "Close the gap",
+      href: "/student/career?tab=roadmap",
+      why: `L${level} vs the L${targetLevel} your target role needs. The roadmap sequences how to close it.`,
+    };
+  } else {
+    nextStep = {
+      label: "Keep it fresh",
+      href: `/student/assessment?skill=${skillId}`,
+      why: "At or above target with human-verified evidence. Re-assess periodically so it does not go stale.",
+    };
+  }
+
+  return {
+    skill,
+    category: d.skillCategories.find((c) => c.id === skill.categoryId)?.name,
+    held,
+    level,
+    selfLevel: rs?.selfLevel ?? raw?.selfRating ?? 0,
+    targetLevel,
+    assessed,
+    lastAssessed,
+    confidence: rs?.evidence.confidence ?? "low",
+    evidenceScorePct: Math.round((rs?.evidence.score ?? 0) * 100),
+    rationale: rs?.evidence.rationale ?? [],
+    stack,
+    origins: { courses, projects, certifications },
+    competencies: d.competencies
+      .filter((c) => c.skillIds.includes(skillId))
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        requiredByGoal: targetRole.requirements.some(
+          (r) => r.competencyId === c.id,
+        ),
+      })),
+    prerequisites: skill.prerequisiteIds
+      .map((pid) => d.skillById.get(pid)?.name)
+      .filter((x): x is string => Boolean(x)),
+    nextStep,
+    targetRoleTitle: targetRole.title,
+  };
+}
+
 // ── student home: journey spine, next best action, activity ────────────────
 
 export interface JourneyStage {

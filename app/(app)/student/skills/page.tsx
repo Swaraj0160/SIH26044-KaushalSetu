@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { CompetencyGraph } from "@/components/kaushal/competency-graph";
 import { PageHeader } from "@/components/kaushal/page-header";
 import { EvidenceBadge, LevelPip } from "@/components/kaushal/primitives";
@@ -48,13 +50,16 @@ export default async function SkillsPage() {
             return (
               <div
                 key={rs.skillId}
-                className="border-border rounded-lg border p-3"
+                className="border-border hover:border-primary/40 rounded-lg border p-3 transition-colors"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-3">
-                    <span className="font-medium">
+                    <Link
+                      href={`/student/skills/${rs.skillId}`}
+                      className="font-medium hover:underline"
+                    >
                       {rs.skill?.name ?? rs.skillId}
-                    </span>
+                    </Link>
                     <LevelPip level={rs.effectiveLevel} />
                     {rs.assessed ? (
                       <span className="text-success text-xs">assessed</span>

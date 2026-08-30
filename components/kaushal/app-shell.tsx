@@ -20,6 +20,7 @@ const NAV: Record<Persona["role"], NavGroup[]> = {
       items: [
         { href: "/student/education", label: "Education", icon: "▤" },
         { href: "/student/skills", label: "Skills & Evidence", icon: "✦" },
+        { href: "/student/assessment", label: "Assessments", icon: "◉" },
         { href: "/student/projects", label: "Projects", icon: "■" },
         { href: "/student/internship", label: "Internship", icon: "▲" },
         { href: "/student/certifications", label: "Certifications", icon: "❖" },

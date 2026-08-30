@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from "react";
 
+import Link from "next/link";
+
+import { recordAssessmentAction } from "@/app/student-actions";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { LEVEL_LABEL } from "@/lib/engines/config";
@@ -30,14 +33,17 @@ interface Answered {
 }
 
 export function AdaptiveAssessment({
+  skillId,
   skillName,
   questions,
   priorLevel,
 }: {
+  skillId: string;
   skillName: string;
   questions: Question[];
   priorLevel?: number;
 }) {
+  const [saved, setSaved] = useState(false);
   const byDiff = useMemo(() => {
     const m: Record<Difficulty, Question[]> = {
       easy: [],
@@ -170,11 +176,31 @@ export function AdaptiveAssessment({
               Strong across all tested areas.
             </div>
           )}
-          <p className="text-muted-foreground mt-3 text-xs">
-            In the full product this result is written to the skill&apos;s
-            evidence ledger as an <strong>assessment</strong> item, raising its
-            evidence confidence and updating every match that depends on it.
-          </p>
+          <div className="border-border mt-4 border-t pt-3">
+            {saved ? (
+              <p className="text-success text-sm">
+                ✓ Saved to your record as an <strong>assessment</strong> item —
+                {skillName}&apos;s evidence confidence and every dependent match
+                have recomputed.{" "}
+                <Link href="/student/skills" className="underline">
+                  View your skills →
+                </Link>
+              </p>
+            ) : (
+              <form
+                action={recordAssessmentAction}
+                onSubmit={() => setSaved(true)}
+              >
+                <input type="hidden" name="skillId" value={skillId} />
+                <input type="hidden" name="score" value={score} />
+                <input type="hidden" name="level" value={level} />
+                <Button type="submit">Save this result to my record</Button>
+                <span className="text-muted-foreground ml-2 text-xs">
+                  writes an assessment evidence item for {skillName}
+                </span>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     );

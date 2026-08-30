@@ -87,7 +87,11 @@ export default async function EducationPage() {
                       c.skills.map((s) => (
                         <Link
                           key={s.id}
-                          href="/student/skills"
+                          href={
+                            s.hasIt
+                              ? `/student/skills/${s.id}`
+                              : "/student/skills"
+                          }
                           className="border-border bg-muted/40 hover:border-primary/40 inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs"
                         >
                           {s.name}

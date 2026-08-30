@@ -43,6 +43,7 @@ export default async function AssessmentPage({
           }
         />
         <AdaptiveAssessment
+          skillId={chosen}
           skillName={skill.name}
           questions={bankForSkill(chosen)}
           priorLevel={
