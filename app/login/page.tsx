@@ -1,15 +1,15 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
-import { signInAs } from "@/app/actions";
+import { signInAs, signOut } from "@/app/actions";
 import { LogoMark } from "@/components/kaushal/logo";
 import { LoginForm } from "@/components/kaushal/login-form";
 import { DEMO_LOGINS } from "@/lib/auth/demo-provider";
+import { homePathFor } from "@/lib/auth/personas";
 import { getPersona } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
-  title: "Sign in · KaushalSetu",
+  title: "Sign in",
   description: "Sign in to the KaushalSetu competency-intelligence platform.",
 };
 
@@ -21,8 +21,16 @@ const ROLE_BLURB: Record<string, string> = {
   Admin: "Govern the ecosystem — taxonomy, verification, audit.",
 };
 
+const ROLE_LABEL: Record<string, string> = {
+  student: "Student",
+  recruiter: "Industry",
+  faculty: "Faculty",
+  institution_admin: "Institution",
+  super_admin: "Administrator",
+};
+
 export default async function LoginPage() {
-  if (await getPersona()) redirect("/student"); // already signed in → route guard will re-home
+  const current = await getPersona();
 
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
@@ -86,14 +94,42 @@ export default async function LoginPage() {
           <div className="border-accent/40 bg-accent-muted/60 text-accent-foreground mb-1 inline-flex rounded-full border px-2 py-0.5 text-xs">
             Demo environment
           </div>
-          <h2 className="text-2xl font-semibold">Sign in</h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Use a demo account below, or sign in manually.
-          </p>
 
-          <div className="mt-6">
-            <LoginForm />
-          </div>
+          {current ? (
+            <div className="border-border bg-card mt-2 rounded-lg border p-4">
+              <h2 className="text-lg font-semibold">You are signed in</h2>
+              <p className="text-muted-foreground mt-1 text-sm">
+                {current.name} · {ROLE_LABEL[current.role] ?? current.role}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  href={homePathFor(current.role)}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex rounded-md px-3 py-1.5 text-sm font-medium"
+                >
+                  Continue to workspace
+                </Link>
+                <form action={signOut}>
+                  <button className="border-border hover:bg-muted inline-flex rounded-md border px-3 py-1.5 text-sm">
+                    Sign out
+                  </button>
+                </form>
+              </div>
+              <p className="text-muted-foreground mt-3 text-xs">
+                Switch account by signing out, or pick another demo role below.
+              </p>
+            </div>
+          ) : (
+            <>
+              <h2 className="text-2xl font-semibold">Sign in</h2>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Use a demo account below, or sign in manually.
+              </p>
+
+              <div className="mt-6">
+                <LoginForm />
+              </div>
+            </>
+          )}
 
           <div className="text-muted-foreground my-6 flex items-center gap-3 text-xs">
             <span className="bg-border h-px flex-1" />

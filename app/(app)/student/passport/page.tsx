@@ -11,12 +11,14 @@ import { Qr } from "@/components/kaushal/qr";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getPassport } from "@/lib/data";
+import { getStudentCtx } from "@/lib/data/viewer";
 import { currentStudentId } from "@/lib/guards";
 import { appUrl } from "@/lib/env";
 
 export default async function PassportPage() {
   const sid = await currentStudentId();
-  const p = getPassport(sid);
+  const ctx = await getStudentCtx(sid);
+  const p = getPassport(sid, ctx);
   const base = appUrl();
   const verifyUrl = p.credential
     ? `${base}/verify/${p.credential.id}`

@@ -18,16 +18,18 @@ import {
   getPassport,
   getStudentProjects,
 } from "@/lib/data";
+import { getStudentCtx } from "@/lib/data/viewer";
 import { getDataset } from "@/lib/demo/dataset";
 import { currentStudentId } from "@/lib/guards";
 
 export default async function CompetencyProfilePage() {
   const sid = await currentStudentId();
-  const p = getPassport(sid);
-  const graph = getCompetencyGraph(sid);
-  const journey = getJourney(sid);
-  const edu = getEducation(sid);
-  const projects = getStudentProjects(sid);
+  const ctx = await getStudentCtx(sid);
+  const p = getPassport(sid, ctx);
+  const graph = getCompetencyGraph(sid, ctx);
+  const journey = getJourney(sid, ctx);
+  const edu = getEducation(sid, ctx);
+  const projects = getStudentProjects(sid, ctx);
   const d = getDataset();
   const internships = d.internships.filter((i) => i.studentId === sid);
 

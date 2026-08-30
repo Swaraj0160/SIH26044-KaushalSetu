@@ -22,15 +22,55 @@ import {
 } from "@/lib/engines";
 import { computeNextActions, type NextAction } from "@/lib/engines/next-action";
 import type {
+  Achievement,
   Application,
+  Certification,
   Id,
   Internship,
   Opportunity,
+  Project,
   RoleProfile,
   Student,
 } from "@/lib/domain/types";
 
 const ds = getDataset;
+
+/**
+ * Per-request view context. When the signed-in student has made session edits
+ * (career goal, added projects / certifications / achievements / assessments),
+ * the page passes a patched `student` and merged collections so every engine
+ * recomputes from the edited state. Omitted everywhere else → base dataset,
+ * identical behaviour. Built by `lib/data/viewer.ts`.
+ */
+export interface StudentCtx {
+  student?: Student;
+  projects?: Project[];
+  certifications?: Certification[];
+  achievements?: Achievement[];
+}
+
+function studentOf(studentId: Id, ctx?: StudentCtx): Student {
+  const s = ctx?.student ?? ds().studentById.get(studentId);
+  if (!s) throw new Error(`Unknown student ${studentId}`);
+  return s;
+}
+function projectsOf(studentId: Id, ctx?: StudentCtx): Project[] {
+  return (
+    ctx?.projects ?? ds().projects.filter((p) => p.studentId === studentId)
+  );
+}
+function certsOf(studentId: Id, ctx?: StudentCtx): Certification[] {
+  return (
+    ctx?.certifications ??
+    ds().certifications.filter((c) => c.studentId === studentId)
+  );
+}
+function achievementsOf(studentId: Id, ctx?: StudentCtx): Achievement[] {
+  return (
+    ctx?.achievements ??
+    ds().achievements.filter((a) => a.studentId === studentId)
+  );
+}
 
 // ── shared helpers ─────────────────────────────────────────────────────────
 
@@ -47,11 +87,12 @@ export function experienceMonths(studentId: Id): number {
     }, 0);
 }
 
-export function resolveStudent(studentId: Id): ResolvedProfile {
+export function resolveStudent(
+  studentId: Id,
+  ctx?: StudentCtx,
+): ResolvedProfile {
   const d = ds();
-  const student = d.studentById.get(studentId);
-  if (!student) throw new Error(`Unknown student ${studentId}`);
-  return resolveProfile(student, d.skillById, d.competencies);
+  return resolveProfile(studentOf(studentId, ctx), d.skillById, d.competencies);
 }
 
 // ── student-facing ─────────────────────────────────────────────────────────
@@ -74,18 +115,21 @@ export interface StudentDashboard {
   recommended: RankedOpportunity[];
 }
 
-export function getStudentDashboard(studentId: Id): StudentDashboard {
+export function getStudentDashboard(
+  studentId: Id,
+  ctx?: StudentCtx,
+): StudentDashboard {
   const d = ds();
-  const student = d.studentById.get(studentId);
-  if (!student) throw new Error(`Unknown student ${studentId}`);
+  const student = studentOf(studentId, ctx);
   const targetRole = d.roleById.get(student.targetRoleId)!;
-  const profile = resolveStudent(studentId);
+  const profile = resolveStudent(studentId, ctx);
   const xp = experienceMonths(studentId);
+  const studentProjects = projectsOf(studentId, ctx);
 
   const readiness = computeReadiness(student, profile, {
     role: targetRole,
     // adaptive assessment produces AssessmentResult in future; profile already carries assessedLevel
-    projects: d.projects.filter((p) => p.studentId === studentId),
+    projects: studentProjects,
     experienceMonths: xp,
   });
 
@@ -143,7 +187,7 @@ export function getStudentDashboard(studentId: Id): StudentDashboard {
       }
     : undefined;
 
-  const recommended = rankOpportunitiesForStudent(studentId).slice(0, 5);
+  const recommended = rankOpportunitiesForStudent(studentId, ctx).slice(0, 5);
 
   return {
     student,
@@ -172,10 +216,11 @@ export interface RankedOpportunity {
 
 export function rankOpportunitiesForStudent(
   studentId: Id,
+  ctx?: StudentCtx,
 ): RankedOpportunity[] {
   const d = ds();
-  const student = d.studentById.get(studentId)!;
-  const profile = resolveStudent(studentId);
+  const student = studentOf(studentId, ctx);
+  const profile = resolveStudent(studentId, ctx);
   const xp = experienceMonths(studentId);
   const apps = new Map(
     d.applications
@@ -206,13 +251,14 @@ export function rankOpportunitiesForStudent(
 export function getOpportunityMatchForStudent(
   studentId: Id,
   opportunityId: Id,
+  ctx?: StudentCtx,
 ) {
   const d = ds();
-  const student = d.studentById.get(studentId)!;
+  const student = studentOf(studentId, ctx);
   const opportunity = d.opportunityById.get(opportunityId);
   if (!opportunity) return undefined;
   const role = d.roleById.get(opportunity.roleId)!;
-  const profile = resolveStudent(studentId);
+  const profile = resolveStudent(studentId, ctx);
   const match = computeMatch(student, profile, {
     role,
     opportunity,
@@ -240,12 +286,16 @@ export interface RoleFit {
   gap: SkillGapReport;
 }
 
-export function simulateRoles(studentId: Id, roleIds: Id[]): RoleFit[] {
+export function simulateRoles(
+  studentId: Id,
+  roleIds: Id[],
+  ctx?: StudentCtx,
+): RoleFit[] {
   const d = ds();
-  const student = d.studentById.get(studentId)!;
-  const profile = resolveStudent(studentId);
+  const student = studentOf(studentId, ctx);
+  const profile = resolveStudent(studentId, ctx);
   const xp = experienceMonths(studentId);
-  const projects = d.projects.filter((p) => p.studentId === studentId);
+  const projects = projectsOf(studentId, ctx);
 
   return roleIds
     .map((rid) => d.roleById.get(rid))
@@ -267,11 +317,16 @@ export function simulateRoles(studentId: Id, roleIds: Id[]): RoleFit[] {
 }
 
 /** "Which role am I closest to" — ranks all roles by match. */
-export function closestRoles(studentId: Id, limit = 5): RoleFit[] {
+export function closestRoles(
+  studentId: Id,
+  limit = 5,
+  ctx?: StudentCtx,
+): RoleFit[] {
   const d = ds();
   return simulateRoles(
     studentId,
     d.roles.map((r) => r.id),
+    ctx,
   )
     .sort((a, b) => b.match.score - a.match.score)
     .slice(0, limit);
@@ -809,11 +864,11 @@ export interface GraphData {
   }>;
 }
 
-export function getCompetencyGraph(studentId: Id): GraphData {
+export function getCompetencyGraph(studentId: Id, ctx?: StudentCtx): GraphData {
   const d = ds();
-  const student = d.studentById.get(studentId)!;
+  const student = studentOf(studentId, ctx);
   const targetRole = d.roleById.get(student.targetRoleId)!;
-  const profile = resolveStudent(studentId);
+  const profile = resolveStudent(studentId, ctx);
   const reqByComp = new Map(
     targetRole.requirements.map((r) => [r.competencyId, r]),
   );
@@ -887,10 +942,10 @@ export function getCompetencyGraph(studentId: Id): GraphData {
   };
 }
 
-export function getPassport(studentId: Id) {
+export function getPassport(studentId: Id, ctx?: StudentCtx) {
   const d = ds();
-  const student = d.studentById.get(studentId)!;
-  const dash = getStudentDashboard(studentId);
+  const student = studentOf(studentId, ctx);
+  const dash = getStudentDashboard(studentId, ctx);
   const profile = dash.profile;
 
   const competencyRows = [...profile.competencies.values()]
@@ -940,11 +995,11 @@ export function getPassport(studentId: Id) {
     departmentName: dash.departmentName,
     competencyRows,
     verifiedSkills,
-    projects: d.projects.filter((p) => p.studentId === studentId),
-    certifications: d.certifications.filter((c) => c.studentId === studentId),
-    achievements: d.achievements
-      .filter((a) => a.studentId === studentId)
-      .sort((a, b) => b.date.localeCompare(a.date)),
+    projects: projectsOf(studentId, ctx),
+    certifications: certsOf(studentId, ctx),
+    achievements: [...achievementsOf(studentId, ctx)].sort((a, b) =>
+      b.date.localeCompare(a.date),
+    ),
     endorsements: student.endorsements.map((e) => ({
       ...e,
       competencyName:
@@ -954,9 +1009,8 @@ export function getPassport(studentId: Id) {
   };
 }
 
-export function evidenceForSkill(studentId: Id, skillId: Id) {
-  const d = ds();
-  const s = d.studentById.get(studentId);
+export function evidenceForSkill(studentId: Id, skillId: Id, ctx?: StudentCtx) {
+  const s = ctx?.student ?? ds().studentById.get(studentId);
   const ss = s?.skills.find((x) => x.skillId === skillId);
   if (!ss) return undefined;
   return { ...scoreEvidence(ss.evidence), evidence: ss.evidence };
@@ -973,15 +1027,15 @@ export interface JourneyStage {
   href: string;
 }
 
-export function getJourney(studentId: Id): JourneyStage[] {
+export function getJourney(studentId: Id, ctx?: StudentCtx): JourneyStage[] {
   const d = ds();
-  const s = d.studentById.get(studentId)!;
-  const dash = getStudentDashboard(studentId);
+  const s = studentOf(studentId, ctx);
+  const dash = getStudentDashboard(studentId, ctx);
   const profile = dash.profile;
   const skillsWithEvidence = [...profile.skills.values()].filter(
     (r) => r.evidence.score >= 0.3,
   ).length;
-  const projects = d.projects.filter((p) => p.studentId === studentId);
+  const projects = projectsOf(studentId, ctx);
   const internships = d.internships.filter((i) => i.studentId === studentId);
   const activeIntern = internships.find((i) => i.status === "active");
   const doneIntern = internships.some((i) => i.status === "completed");
@@ -1068,10 +1122,10 @@ export function getJourney(studentId: Id): JourneyStage[] {
   });
 }
 
-export function getNextActions(studentId: Id): NextAction[] {
+export function getNextActions(studentId: Id, ctx?: StudentCtx): NextAction[] {
   const d = ds();
-  const s = d.studentById.get(studentId)!;
-  const dash = getStudentDashboard(studentId);
+  const s = studentOf(studentId, ctx);
+  const dash = getStudentDashboard(studentId, ctx);
   const internships = d.internships.filter((i) => i.studentId === studentId);
   const apps = dash.applications.map((a) => ({
     ...a,
@@ -1079,7 +1133,7 @@ export function getNextActions(studentId: Id): NextAction[] {
   }));
 
   const unverifiedProjectSkills = new Set<string>();
-  for (const p of d.projects.filter((p) => p.studentId === studentId)) {
+  for (const p of projectsOf(studentId, ctx)) {
     for (const sid of p.skillIds) unverifiedProjectSkills.add(sid);
   }
 
@@ -1108,12 +1162,16 @@ export interface ActivityItem {
     | "achievement";
 }
 
-export function getRecentActivity(studentId: Id, limit = 6): ActivityItem[] {
+export function getRecentActivity(
+  studentId: Id,
+  limit = 6,
+  ctx?: StudentCtx,
+): ActivityItem[] {
   const d = ds();
-  const s = d.studentById.get(studentId)!;
+  const s = studentOf(studentId, ctx);
   const items: ActivityItem[] = [];
 
-  for (const p of d.projects.filter((p) => p.studentId === studentId)) {
+  for (const p of projectsOf(studentId, ctx)) {
     items.push({
       when: p.date,
       kind: "project",
@@ -1126,7 +1184,7 @@ export function getRecentActivity(studentId: Id, limit = 6): ActivityItem[] {
         label: `${ev.role === "faculty" ? "Faculty" : "Industry"} evaluation received for ${p.title}`,
       });
   }
-  for (const c of d.certifications.filter((c) => c.studentId === studentId)) {
+  for (const c of certsOf(studentId, ctx)) {
     items.push({
       when: c.date,
       kind: "certificate",
@@ -1140,7 +1198,7 @@ export function getRecentActivity(studentId: Id, limit = 6): ActivityItem[] {
       label: `${e.role === "industry" ? "Industry" : "Faculty"} endorsed ${d.competencyById.get(e.competencyId)?.name ?? "a competency"}`,
     });
   }
-  for (const a of d.achievements.filter((a) => a.studentId === studentId)) {
+  for (const a of achievementsOf(studentId, ctx)) {
     items.push({
       when: a.date,
       kind: "achievement",
@@ -1174,7 +1232,10 @@ export function getRecentActivity(studentId: Id, limit = 6): ActivityItem[] {
       label: `Application to ${o?.title.split(" — ")[0] ?? "a role"} → ${a.status.replace(/_/g, " ")}`,
     });
   }
-  for (const rs of getStudentDashboard(studentId).profile.skills.values()) {
+  for (const rs of getStudentDashboard(
+    studentId,
+    ctx,
+  ).profile.skills.values()) {
     if (rs.evidence.confidence === "verified")
       items.push({
         when: "2026-06-01",
@@ -1189,28 +1250,27 @@ export function getRecentActivity(studentId: Id, limit = 6): ActivityItem[] {
     .slice(0, limit);
 }
 
-export function getStudentHome(studentId: Id) {
-  const d = ds();
-  const s = d.studentById.get(studentId)!;
-  const dash = getStudentDashboard(studentId);
+export function getStudentHome(studentId: Id, ctx?: StudentCtx) {
+  const s = studentOf(studentId, ctx);
+  const dash = getStudentDashboard(studentId, ctx);
   return {
     student: s,
     firstName: s.name.replace(/^Dr\.?\s+/i, "").split(" ")[0],
     targetRole: dash.targetRole,
     readiness: dash.readiness,
-    journey: getJourney(studentId),
-    nextActions: getNextActions(studentId),
-    activity: getRecentActivity(studentId, 5),
+    journey: getJourney(studentId, ctx),
+    nextActions: getNextActions(studentId, ctx),
+    activity: getRecentActivity(studentId, 5, ctx),
     recommended: dash.recommended.slice(0, 3),
   };
 }
 
 // ── education ─────────────────────────────────────────────────────────────
 
-export function getEducation(studentId: Id) {
+export function getEducation(studentId: Id, ctx?: StudentCtx) {
   const d = ds();
-  const s = d.studentById.get(studentId)!;
-  const profile = resolveStudent(studentId);
+  const s = studentOf(studentId, ctx);
+  const profile = resolveStudent(studentId, ctx);
   return {
     ...s.education,
     graduationYear: s.graduationYear,
@@ -1232,10 +1292,9 @@ export function getEducation(studentId: Id) {
 
 // ── projects ──────────────────────────────────────────────────────────────
 
-export function getStudentProjects(studentId: Id) {
+export function getStudentProjects(studentId: Id, ctx?: StudentCtx) {
   const d = ds();
-  return d.projects
-    .filter((p) => p.studentId === studentId)
+  return projectsOf(studentId, ctx)
     .map((p) => ({
       ...p,
       skillNames: p.skillIds.map((sid) => d.skillById.get(sid)?.name ?? sid),
@@ -1246,16 +1305,15 @@ export function getStudentProjects(studentId: Id) {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
-export function getProject(studentId: Id, projectId: Id) {
-  return getStudentProjects(studentId).find((p) => p.id === projectId);
+export function getProject(studentId: Id, projectId: Id, ctx?: StudentCtx) {
+  return getStudentProjects(studentId, ctx).find((p) => p.id === projectId);
 }
 
 // ── certifications & achievements ─────────────────────────────────────────
 
-export function getCertifications(studentId: Id) {
+export function getCertifications(studentId: Id, ctx?: StudentCtx) {
   const d = ds();
-  return d.certifications
-    .filter((c) => c.studentId === studentId)
+  return certsOf(studentId, ctx)
     .map((c) => ({
       ...c,
       skillNames: c.skillIds.map((sid) => d.skillById.get(sid)?.name ?? sid),
@@ -1266,10 +1324,9 @@ export function getCertifications(studentId: Id) {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
-export function getAchievements(studentId: Id) {
+export function getAchievements(studentId: Id, ctx?: StudentCtx) {
   const d = ds();
-  return d.achievements
-    .filter((a) => a.studentId === studentId)
+  return achievementsOf(studentId, ctx)
     .map((a) => ({
       ...a,
       skillNames: a.skillIds.map((sid) => d.skillById.get(sid)?.name ?? sid),

@@ -201,6 +201,56 @@ test("faculty verification offers approve and request-changes", async ({
   ).toBeVisible();
 });
 
+test("editable career goal recomputes readiness, gaps and the journey", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: /continue as student/i }).click();
+  await page.waitForURL(/\/student$/);
+
+  await page.goto("/student/career?tab=goal");
+  await expect(
+    page.getByText("Machine Learning Engineer").first(),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /change career goal/i }).click();
+  await page.getByLabel(/target role/i).selectOption({ label: "Data Analyst" });
+  await page.getByRole("button", { name: /^save goal$/i }).click();
+
+  await expect(page).toHaveURL(/tab=goal&saved=1/);
+  await expect(page.getByText(/career goal updated/i)).toBeVisible();
+  await page.goto("/student");
+  await expect(page.getByText(/Target:\s*Data Analyst/i)).toBeVisible();
+  await expect(
+    page.getByText(/\d+\/100 for Data Analyst/).first(),
+  ).toBeVisible();
+});
+
+test("a student can add a project and it becomes skill evidence", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: /continue as student/i }).click();
+  await page.waitForURL(/\/student$/);
+
+  await page.goto("/student/projects");
+  await page.getByRole("button", { name: /add a project/i }).click();
+  await page
+    .getByPlaceholder("Movie-review sentiment classifier")
+    .fill("Session test project");
+  await page
+    .getByPlaceholder("What it does and how you built it.")
+    .fill("A project added by the e2e test to verify the mutation layer.");
+  await page.getByRole("button", { name: /^Containers \(Docker\)$/ }).click();
+  await page.getByRole("button", { name: /^save project$/i }).click();
+
+  await expect(page).toHaveURL(/saved=1/);
+  await expect(page.getByText("Session test project")).toBeVisible();
+  await expect(page.getByText(/added this session/i).first()).toBeVisible();
+  // the added project shows as project evidence on the skill ledger
+  await page.goto("/student/skills");
+  await expect(page.getByText(/Evidence ledger/)).toBeVisible();
+});
+
 test("command palette opens with the keyboard and navigates", async ({
   page,
 }) => {

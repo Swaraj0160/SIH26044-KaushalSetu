@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { GapList, Roadmap } from "@/components/kaushal/gap-list";
+import { GoalEditor } from "@/components/kaushal/goal-editor";
 import { JourneyStepper } from "@/components/kaushal/journey-stepper";
 import { OpportunityCard } from "@/components/kaushal/opportunity-card";
 import { PageHeader } from "@/components/kaushal/page-header";
@@ -16,7 +17,9 @@ import {
   getStudentDashboard,
   rankOpportunitiesForStudent,
   simulateRoles,
+  type StudentCtx,
 } from "@/lib/data";
+import { getStudentCtx } from "@/lib/data/viewer";
 import { getDataset } from "@/lib/demo/dataset";
 import { currentStudentId } from "@/lib/guards";
 import { cn } from "@/lib/utils";
@@ -41,10 +44,12 @@ export default async function CareerPage({
   const tab = (
     typeof sp.tab === "string" ? sp.tab : "goal"
   ) as (typeof TABS)[number][0];
-  const dash = getStudentDashboard(sid);
-  const journey = getJourney(sid);
+  const ctx = await getStudentCtx(sid);
+  const dash = getStudentDashboard(sid, ctx);
+  const journey = getJourney(sid, ctx);
   const d = getDataset();
-  const student = d.studentById.get(sid)!;
+  const student = ctx.student ?? d.studentById.get(sid)!;
+  const saved = sp.saved === "1";
 
   return (
     <div className="space-y-6">
@@ -71,7 +76,16 @@ export default async function CareerPage({
         ))}
       </div>
 
-      {tab === "goal" ? <GoalTab sid={sid} /> : null}
+      {saved ? (
+        <div
+          role="status"
+          className="border-success/40 bg-success/10 text-success rounded-md border px-3 py-2 text-sm"
+        >
+          ✓ Career goal updated — every figure below recomputed.
+        </div>
+      ) : null}
+
+      {tab === "goal" ? <GoalTab sid={sid} ctx={ctx} /> : null}
       {tab === "readiness" ? (
         <Card>
           <CardContent className="pt-5">
@@ -100,23 +114,26 @@ export default async function CareerPage({
               fits={simulateRoles(
                 sid,
                 d.roles.map((r) => r.id),
+                ctx,
               )}
               targetRoleId={student.targetRoleId}
             />
           </CardContent>
         </Card>
       ) : null}
-      {tab === "opportunities" ? <OpportunitiesTab sid={sid} /> : null}
-      {tab === "applications" ? <ApplicationsTab sid={sid} /> : null}
+      {tab === "opportunities" ? (
+        <OpportunitiesTab sid={sid} ctx={ctx} />
+      ) : null}
+      {tab === "applications" ? <ApplicationsTab sid={sid} ctx={ctx} /> : null}
     </div>
   );
 }
 
-async function GoalTab({ sid }: { sid: string }) {
-  const dash = getStudentDashboard(sid);
+async function GoalTab({ sid, ctx }: { sid: string; ctx: StudentCtx }) {
+  const dash = getStudentDashboard(sid, ctx);
   const d = getDataset();
-  const student = d.studentById.get(sid)!;
-  const close = closestRoles(sid, 5);
+  const student = ctx.student ?? d.studentById.get(sid)!;
+  const close = closestRoles(sid, 5, ctx);
   const targetFit = close.find((r) => r.role.id === dash.targetRole.id);
   const blockingGaps = dash.gap.gaps
     .filter((g) => g.gap > 0 && g.mandatory)
@@ -125,20 +142,32 @@ async function GoalTab({ sid }: { sid: string }) {
   return (
     <div className="space-y-4">
       <Card>
-        <CardContent className="grid gap-4 pt-5 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="Target role" value={dash.targetRole.title} />
-          <Field label="Family" value={dash.targetRole.family} />
-          <Field
-            label="Interests"
-            value={student.careerInterests
-              .map((r) => d.roleById.get(r)?.title)
-              .filter(Boolean)
-              .slice(0, 2)
-              .join(", ")}
-          />
-          <Field
-            label="Match / Readiness"
-            value={`${targetFit?.match.score ?? "—"}% · ${dash.readiness.score}/100`}
+        <CardContent className="space-y-4 pt-5">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Target role" value={dash.targetRole.title} />
+            <Field label="Family" value={dash.targetRole.family} />
+            <Field
+              label="Interests"
+              value={student.careerInterests
+                .filter((r) => r !== dash.targetRole.id)
+                .map((r) => d.roleById.get(r)?.title)
+                .filter(Boolean)
+                .slice(0, 2)
+                .join(", ")}
+            />
+            <Field
+              label="Match / Readiness"
+              value={`${targetFit?.match.score ?? "—"}% · ${dash.readiness.score}/100`}
+            />
+          </div>
+          <GoalEditor
+            roles={d.roles.map((r) => ({
+              id: r.id,
+              title: r.title,
+              family: r.family,
+            }))}
+            currentRoleId={student.targetRoleId}
+            currentInterests={student.careerInterests}
           />
         </CardContent>
       </Card>
@@ -219,8 +248,14 @@ async function GoalTab({ sid }: { sid: string }) {
   );
 }
 
-async function OpportunitiesTab({ sid }: { sid: string }) {
-  const ranked = rankOpportunitiesForStudent(sid);
+async function OpportunitiesTab({
+  sid,
+  ctx,
+}: {
+  sid: string;
+  ctx: StudentCtx;
+}) {
+  const ranked = rankOpportunitiesForStudent(sid, ctx);
   const applied = new Set(await appliedOpportunityIds());
   const strong = ranked.filter((r) => r.match.score >= 65);
   const rest = ranked.filter((r) => r.match.score < 65).slice(0, 10);
@@ -282,8 +317,8 @@ const FLOW = [
   "hired",
 ];
 
-async function ApplicationsTab({ sid }: { sid: string }) {
-  const dash = getStudentDashboard(sid);
+async function ApplicationsTab({ sid, ctx }: { sid: string; ctx: StudentCtx }) {
+  const dash = getStudentDashboard(sid, ctx);
   const d = getDataset();
   const seededIds = new Set(dash.applications.map((a) => a.opportunityId));
   const extra = (await appliedOpportunityIds()).filter(

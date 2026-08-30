@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/kaushal/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getEducation, getJourney } from "@/lib/data";
+import { getStudentCtx } from "@/lib/data/viewer";
 import { currentStudentId } from "@/lib/guards";
 
 const GRADE_TONE: Record<string, string> = {
@@ -18,8 +19,9 @@ const GRADE_TONE: Record<string, string> = {
 
 export default async function EducationPage() {
   const sid = await currentStudentId();
-  const edu = getEducation(sid);
-  const journey = getJourney(sid);
+  const ctx = await getStudentCtx(sid);
+  const edu = getEducation(sid, ctx);
+  const journey = getJourney(sid, ctx);
 
   const byTerm = new Map<string, typeof edu.courses>();
   for (const c of edu.courses) {

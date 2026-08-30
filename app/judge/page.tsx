@@ -9,7 +9,7 @@ import { getDataset } from "@/lib/demo/dataset";
 import { getInstitutionOverview } from "@/lib/data";
 
 export const metadata: Metadata = {
-  title: "KaushalSetu — Technical Showcase",
+  title: "Technical showcase",
   description:
     "The engineering behind KaushalSetu: competency graph, explainable matching, deterministic engines, AI abstraction, multi-tenancy.",
 };
@@ -199,7 +199,8 @@ export default function JudgePage() {
               <strong className="text-foreground">Evidence Confidence</strong> —
               every skill is scored by the evidence behind it (self-declared →
               assessment → project → certificate → faculty-verified →
-              industry-verified). FNV-1a-free, monotonic, deterministic. A lone
+              industry-verified). The score only rises as stronger evidence is
+              added, and the arithmetic is fixed — not a model. A lone
               self-declaration is capped near zero and visibly discounted in
               every downstream calculation.
             </li>

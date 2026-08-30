@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { appliedOpportunityIds } from "@/lib/applied";
 import { getOpportunityMatchForStudent } from "@/lib/data";
+import { getStudentCtx } from "@/lib/data/viewer";
 import { getDataset } from "@/lib/demo/dataset";
 import { currentStudentId } from "@/lib/guards";
 
@@ -23,7 +24,8 @@ export default async function OpportunityDetail({
 }) {
   const { id } = await params;
   const sid = await currentStudentId();
-  const result = getOpportunityMatchForStudent(sid, id);
+  const ctx = await getStudentCtx(sid);
+  const result = getOpportunityMatchForStudent(sid, id, ctx);
   if (!result) notFound();
   const { opportunity: o, role, employer, match, gap } = result;
 
@@ -136,7 +138,7 @@ export default async function OpportunityDetail({
             <CardContent>
               <GapList report={gap} />
               <Link
-                href="/student/gaps"
+                href="/student/career?tab=roadmap"
                 className="text-primary mt-3 inline-block text-xs hover:underline"
               >
                 Full roadmap →

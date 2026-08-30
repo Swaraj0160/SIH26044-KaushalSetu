@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/kaushal/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getProject } from "@/lib/data";
+import { getStudentCtx } from "@/lib/data/viewer";
 import { currentStudentId } from "@/lib/guards";
 
 const TYPE_LABEL: Record<string, string> = {
@@ -23,7 +24,8 @@ export default async function ProjectDetail({
 }) {
   const sid = await currentStudentId();
   const { id } = await params;
-  const p = getProject(sid, id);
+  const ctx = await getStudentCtx(sid);
+  const p = getProject(sid, id, ctx);
   if (!p) notFound();
 
   return (

@@ -1,8 +1,12 @@
+import { deleteAchievementAction } from "@/app/student-actions";
+import { AchievementForm } from "@/components/kaushal/entity-forms";
 import { JourneyStepper } from "@/components/kaushal/journey-stepper";
 import { PageHeader } from "@/components/kaushal/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAchievements, getJourney } from "@/lib/data";
+import { getStudentCtx } from "@/lib/data/viewer";
+import { getDataset } from "@/lib/demo/dataset";
 import { currentStudentId } from "@/lib/guards";
 
 const ICON: Record<string, string> = {
@@ -15,10 +19,18 @@ const ICON: Record<string, string> = {
   extracurricular: "✦",
 };
 
-export default async function AchievementsPage() {
+export default async function AchievementsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const sid = await currentStudentId();
-  const achievements = getAchievements(sid);
-  const journey = getJourney(sid);
+  const sp = await searchParams;
+  const ctx = await getStudentCtx(sid);
+  const achievements = getAchievements(sid, ctx);
+  const journey = getJourney(sid, ctx);
+  const d = getDataset();
+  const isSession = (id: string) => id.startsWith("ach-s");
 
   return (
     <div className="space-y-6">
@@ -27,6 +39,23 @@ export default async function AchievementsPage() {
         description="Hackathons, awards, publications and leadership. Each can carry evidence and claim a competency — often the behavioural ones a transcript never shows."
       />
       <JourneyStepper stages={journey} variant="strip" />
+
+      {sp.saved === "1" ? (
+        <div className="border-success/40 bg-success/10 text-success rounded-md border px-3 py-2 text-sm">
+          ✓ Achievement added to your record.
+        </div>
+      ) : null}
+      {sp.removed === "1" ? (
+        <div className="border-border bg-muted/50 text-muted-foreground rounded-md border px-3 py-2 text-sm">
+          Achievement removed.
+        </div>
+      ) : null}
+
+      <AchievementForm
+        skills={d.skills
+          .map((s) => ({ id: s.id, name: s.name }))
+          .sort((a, b) => a.name.localeCompare(b.name))}
+      />
 
       {achievements.length === 0 ? (
         <Card>
@@ -50,6 +79,14 @@ export default async function AchievementsPage() {
                   <Badge variant="success">
                     verified · {a.evidence.verifiedBy}
                   </Badge>
+                ) : null}
+                {isSession(a.id) ? (
+                  <form action={deleteAchievementAction}>
+                    <input type="hidden" name="id" value={a.id} />
+                    <button className="text-muted-foreground hover:text-destructive text-xs">
+                      remove
+                    </button>
+                  </form>
                 ) : null}
               </div>
               <div className="text-muted-foreground text-xs">

@@ -3,16 +3,18 @@ import { PageHeader } from "@/components/kaushal/page-header";
 import { EvidenceBadge, LevelPip } from "@/components/kaushal/primitives";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCompetencyGraph, getStudentDashboard } from "@/lib/data";
+import { getStudentCtx } from "@/lib/data/viewer";
 import { evidenceKindLabel } from "@/lib/engines/evidence";
 import { currentStudentId } from "@/lib/guards";
 import { getDataset } from "@/lib/demo/dataset";
 
 export default async function SkillsPage() {
   const sid = await currentStudentId();
-  const dash = getStudentDashboard(sid);
-  const graph = getCompetencyGraph(sid);
+  const ctx = await getStudentCtx(sid);
+  const dash = getStudentDashboard(sid, ctx);
+  const graph = getCompetencyGraph(sid, ctx);
   const d = getDataset();
-  const student = d.studentById.get(sid)!;
+  const student = ctx.student ?? d.studentById.get(sid)!;
 
   const rows = [...dash.profile.skills.values()].sort(
     (a, b) =>
@@ -42,7 +44,7 @@ export default async function SkillsPage() {
         </CardHeader>
         <CardContent className="space-y-2">
           {rows.map((rs) => {
-            const raw = student.skills.find((s) => s.skillId === rs.skillId)!;
+            const raw = student.skills.find((s) => s.skillId === rs.skillId);
             return (
               <div
                 key={rs.skillId}
@@ -68,7 +70,7 @@ export default async function SkillsPage() {
                   />
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {raw.evidence.map((e, i) => (
+                  {(raw?.evidence ?? []).map((e, i) => (
                     <span
                       key={i}
                       className="border-border bg-muted/40 text-muted-foreground rounded border px-1.5 py-0.5 text-xs"

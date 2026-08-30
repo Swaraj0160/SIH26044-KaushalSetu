@@ -6,6 +6,7 @@ import { BandLabel } from "@/components/kaushal/primitives";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getStudentHome } from "@/lib/data";
+import { getStudentCtx } from "@/lib/data/viewer";
 import { currentStudentId } from "@/lib/guards";
 
 const ACTIVITY_ICON: Record<string, string> = {
@@ -30,7 +31,8 @@ function timeAgo(iso: string): string {
 
 export default async function StudentHome() {
   const sid = await currentStudentId();
-  const home = getStudentHome(sid);
+  const ctx = await getStudentCtx(sid);
+  const home = getStudentHome(sid, ctx);
   const nba = home.nextActions[0];
   const hour = new Date().getHours();
   const greeting =

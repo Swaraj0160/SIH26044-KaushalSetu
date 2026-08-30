@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { getDataset } from "@/lib/demo/dataset";
 
 export const metadata: Metadata = {
-  title: "KaushalSetu — Academia–Industry Competency Intelligence",
+  title: {
+    absolute: "KaushalSetu — Academia–Industry Competency Intelligence",
+  },
   description:
     "An evidence-based competency intelligence layer connecting students, academia and industry for skill mapping, internships and placement. SIH26044.",
 };
